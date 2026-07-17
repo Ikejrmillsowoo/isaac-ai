@@ -1,16 +1,24 @@
 services:
   postgres:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:0.8.4-pg18-trixie
     container_name: isaac-ai-postgres
-    restart: unless-stopped
+
     environment:
       POSTGRES_DB: isaac_ai
       POSTGRES_USER: isaac_ai
-      POSTGRES_PASSWORD: local_dev_password
+      POSTGRES_PASSWORD: isaac_ai_dev
+
     ports:
-      - "5432:5432"
+      - "5433:5432"
+
     volumes:
-      - isaac_ai_postgres_data:/var/lib/postgresql/data
+      - isaac_ai_postgres_data:/var/lib/postgresql
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U isaac_ai -d isaac_ai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   isaac_ai_postgres_data:
