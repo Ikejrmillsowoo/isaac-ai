@@ -10,6 +10,8 @@ public interface WorkspaceRepository
         extends JpaRepository<Workspace, UUID> {
 
     boolean existsByNameIgnoreCase(String name);
+    
+    boolean existsByNameIgnoreCaseAndIdNot(String name, UUID id);
 
     Optional<Workspace> findByNameIgnoreCase(String name);
 
