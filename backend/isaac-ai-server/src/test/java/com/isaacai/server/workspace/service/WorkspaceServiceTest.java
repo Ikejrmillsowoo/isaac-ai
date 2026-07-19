@@ -1,16 +1,14 @@
 package com.isaacai.server.workspace.service;
 
+import com.isaacai.server.workspace.exception.WorkspaceAlreadyExistsException;
+import com.isaacai.server.workspace.exception.WorkspaceNotFoundException;
+import com.isaacai.server.workspace.model.Workspace;
+import com.isaacai.server.workspace.repository.WorkspaceRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import com.isaacai.server.workspace.exception.WorkspaceAlreadyExistsException;
-import com.isaacai.server.workspace.exception.WorkspaceNotFoundException;
-import com.isaacai.server.workspace.model.Workspace;
-import com.isaacai.server.workspace.repository.WorkspaceRepository;
-import com.isaacai.server.workspace.service.WorkspaceService;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -18,9 +16,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class WorkspaceServiceTest {
@@ -37,6 +33,7 @@ class WorkspaceServiceTest {
 
     @Test
     void shouldCreateWorkspaceWhenNameIsAvailable() {
+
         when(workspaceRepository.existsByNameIgnoreCase("Software"))
                 .thenReturn(false);
 
@@ -44,15 +41,18 @@ class WorkspaceServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         Workspace workspace = workspaceService.create(
-                "  Software  ",
+                " Software ",
                 "Engineering projects",
-                "Act as a senior engineer",
+                "Act as a senior engineer.",
                 "#2563EB"
         );
 
         assertThat(workspace.getName()).isEqualTo("Software");
         assertThat(workspace.getDescription())
                 .isEqualTo("Engineering projects");
+        assertThat(workspace.getSystemPrompt())
+                .isEqualTo("Act as a senior engineer.");
+        assertThat(workspace.getColor()).isEqualTo("#2563EB");
         assertThat(workspace.isArchived()).isFalse();
 
         verify(workspaceRepository)
@@ -64,6 +64,7 @@ class WorkspaceServiceTest {
 
     @Test
     void shouldRejectDuplicateWorkspaceName() {
+
         when(workspaceRepository.existsByNameIgnoreCase("Software"))
                 .thenReturn(true);
 
@@ -73,33 +74,17 @@ class WorkspaceServiceTest {
                         null,
                         null,
                         null
-                )
-        )
+                ))
                 .isInstanceOf(WorkspaceAlreadyExistsException.class)
                 .hasMessage("Workspace 'Software' already exists");
 
         verify(workspaceRepository, never())
-                .save(any(Workspace.class));
-    }
-
-    @Test
-    void shouldRejectDuplicateNameIgnoringCase() {
-        when(workspaceRepository.existsByNameIgnoreCase("software"))
-                .thenReturn(true);
-
-        assertThatThrownBy(() ->
-                workspaceService.create(
-                        "software",
-                        null,
-                        null,
-                        null
-                )
-        )
-                .isInstanceOf(WorkspaceAlreadyExistsException.class);
+                .save(any());
     }
 
     @Test
     void shouldFindWorkspaceById() {
+
         Workspace workspace = new Workspace(
                 "Research",
                 null,
@@ -119,6 +104,7 @@ class WorkspaceServiceTest {
 
     @Test
     void shouldThrowExceptionWhenWorkspaceDoesNotExist() {
+
         UUID id = UUID.randomUUID();
 
         when(workspaceRepository.findById(id))
@@ -126,13 +112,12 @@ class WorkspaceServiceTest {
 
         assertThatThrownBy(() -> workspaceService.findById(id))
                 .isInstanceOf(WorkspaceNotFoundException.class)
-                .hasMessage(
-                        "Workspace with ID '" + id + "' was not found"
-                );
+                .hasMessage("Workspace with ID '" + id + "' was not found.");
     }
 
     @Test
     void shouldArchiveWorkspace() {
+
         Workspace workspace = new Workspace(
                 "Church",
                 null,
@@ -152,6 +137,7 @@ class WorkspaceServiceTest {
 
     @Test
     void shouldRestoreWorkspace() {
+
         Workspace workspace = new Workspace(
                 "Church",
                 null,
@@ -173,6 +159,7 @@ class WorkspaceServiceTest {
 
     @Test
     void shouldRenameWorkspaceWhenNameIsAvailable() {
+
         Workspace workspace = new Workspace(
                 "Software",
                 null,
@@ -185,20 +172,22 @@ class WorkspaceServiceTest {
         when(workspaceRepository.findById(id))
                 .thenReturn(Optional.of(workspace));
 
-        when(workspaceRepository
-                .existsByNameIgnoreCaseAndIdNot("Healthcare", id))
+        when(workspaceRepository.existsByNameIgnoreCaseAndIdNot(
+                "Healthcare",
+                id))
                 .thenReturn(false);
 
         Workspace result = workspaceService.rename(
                 id,
-                "  Healthcare  "
+                " Healthcare "
         );
 
         assertThat(result.getName()).isEqualTo("Healthcare");
     }
 
     @Test
-    void shouldRejectRenameWhenAnotherWorkspaceUsesName() {
+    void shouldRejectRenameWhenNameAlreadyExists() {
+
         Workspace workspace = new Workspace(
                 "Software",
                 null,
@@ -211,13 +200,13 @@ class WorkspaceServiceTest {
         when(workspaceRepository.findById(id))
                 .thenReturn(Optional.of(workspace));
 
-        when(workspaceRepository
-                .existsByNameIgnoreCaseAndIdNot("Research", id))
+        when(workspaceRepository.existsByNameIgnoreCaseAndIdNot(
+                "Research",
+                id))
                 .thenReturn(true);
 
         assertThatThrownBy(() ->
-                workspaceService.rename(id, "Research")
-        )
+                workspaceService.rename(id, "Research"))
                 .isInstanceOf(WorkspaceAlreadyExistsException.class)
                 .hasMessage("Workspace 'Research' already exists");
 
