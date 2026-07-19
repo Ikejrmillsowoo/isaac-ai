@@ -1,4 +1,4 @@
-package com.isaacai.exception;
+package com.isaacai.server.common.exception;
 
 import java.time.Instant;
 import java.util.Map;

@@ -1,4 +1,4 @@
-package com.isaacai.server.workspace;
+package com.isaacai.server.workspace.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

@@ -1,6 +1,8 @@
-package com.isaacai.server.workspace;
+package com.isaacai.server.workspace.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.isaacai.server.workspace.model.Workspace;
 
 import java.util.List;
 import java.util.Optional;

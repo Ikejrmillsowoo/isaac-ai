@@ -1,4 +1,4 @@
-package com.isaacai.server.workspace;
+package com.isaacai.server.workspace.exception;
 
 import java.util.UUID;
 

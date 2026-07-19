@@ -1,9 +1,9 @@
 package com.isaacai.server.workspace.dto;
 
-import com.isaacai.server.workspace.Workspace;
-
 import java.time.Instant;
 import java.util.UUID;
+
+import com.isaacai.server.workspace.model.Workspace;
 
 public record WorkspaceResponse(
         UUID id,

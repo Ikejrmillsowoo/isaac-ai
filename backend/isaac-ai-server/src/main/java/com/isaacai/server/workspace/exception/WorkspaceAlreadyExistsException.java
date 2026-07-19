@@ -1,4 +1,4 @@
-package com.isaacai.server.workspace;
+package com.isaacai.server.workspace.exception;
 
 public class WorkspaceAlreadyExistsException extends RuntimeException {
     

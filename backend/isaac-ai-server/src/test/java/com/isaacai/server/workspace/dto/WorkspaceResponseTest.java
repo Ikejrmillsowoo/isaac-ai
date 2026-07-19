@@ -1,7 +1,8 @@
 package com.isaacai.server.workspace.dto;
 
-import com.isaacai.server.workspace.Workspace;
 import org.junit.jupiter.api.Test;
+
+import com.isaacai.server.workspace.model.Workspace;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

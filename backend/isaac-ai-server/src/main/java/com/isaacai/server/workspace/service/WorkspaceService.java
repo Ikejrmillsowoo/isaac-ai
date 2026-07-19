@@ -1,7 +1,12 @@
-package com.isaacai.server.workspace;
+package com.isaacai.server.workspace.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.isaacai.server.workspace.exception.WorkspaceAlreadyExistsException;
+import com.isaacai.server.workspace.exception.WorkspaceNotFoundException;
+import com.isaacai.server.workspace.model.Workspace;
+import com.isaacai.server.workspace.repository.WorkspaceRepository;
 
 import java.util.List;
 import java.util.UUID;
@@ -108,4 +113,41 @@ public class WorkspaceService {
 
         return name.trim();
     }
+
+
+public Workspace update(
+        UUID id,
+        String name,
+        String description,
+        String systemPrompt,
+        String color
+) {
+    Workspace workspace = findById(id);
+
+    if (name != null) {
+        String normalizedName = normalizeName(name);
+
+        if (workspaceRepository
+                .existsByNameIgnoreCaseAndIdNot(normalizedName, id)) {
+            throw new WorkspaceAlreadyExistsException(normalizedName);
+        }
+
+        workspace.rename(normalizedName);
+    }
+
+    if (description != null) {
+        workspace.updateDescription(description);
+    }
+
+    if (systemPrompt != null) {
+        workspace.updateSystemPrompt(systemPrompt);
+    }
+
+    if (color != null) {
+        workspace.updateColor(color);
+    }
+
+    return workspace;
+}
+    
 }

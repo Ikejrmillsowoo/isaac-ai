@@ -1,10 +1,16 @@
-package com.isaacai.server.workspace;
+package com.isaacai.server.workspace.service;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import com.isaacai.server.workspace.exception.WorkspaceAlreadyExistsException;
+import com.isaacai.server.workspace.exception.WorkspaceNotFoundException;
+import com.isaacai.server.workspace.model.Workspace;
+import com.isaacai.server.workspace.repository.WorkspaceRepository;
+import com.isaacai.server.workspace.service.WorkspaceService;
 
 import java.util.Optional;
 import java.util.UUID;
