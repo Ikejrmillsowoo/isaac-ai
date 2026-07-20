@@ -55,7 +55,7 @@ class MessageRepositoryTest {
 
         List<Message> results =
                 messageRepository
-                        .findAllByConversationIdOrderByCreatedAtAsc(
+                        .findAllByConversationIdOrderByCreatedAtAscIdAsc(
                                 conversation.getId()
                         );
 
@@ -90,7 +90,7 @@ class MessageRepositoryTest {
 
         List<Message> results =
                 messageRepository
-                        .findAllByConversationIdOrderByCreatedAtAsc(
+                        .findAllByConversationIdOrderByCreatedAtAscIdAsc(
                                 firstConversation.getId()
                         );
 

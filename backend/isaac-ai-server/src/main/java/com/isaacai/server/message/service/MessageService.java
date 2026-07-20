@@ -48,6 +48,19 @@ public class MessageService {
         return messageRepository.save(message);
     }
 
+    public Message createUserMessage(
+        UUID workspaceId,
+        UUID conversationId,
+        String content
+) {
+    return create(
+            workspaceId,
+            conversationId,
+            MessageRole.USER,
+            content
+    );
+}
+
     @Transactional(readOnly = true)
     public Message findById(
             UUID workspaceId,
