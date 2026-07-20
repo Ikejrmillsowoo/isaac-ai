@@ -351,4 +351,57 @@ void shouldNotCreateConversationWhenWorkspaceDoesNotExist() {
                 null
         );
     }
+
+     @Test
+void shouldUpdateConversationTitle() {
+    Workspace workspace = createWorkspace();
+
+    Conversation conversation = new Conversation(
+            workspace,
+            "Old title"
+    );
+
+    UUID workspaceId = workspace.getId();
+    UUID conversationId = conversation.getId();
+
+    when(conversationRepository.findByIdAndWorkspaceId(
+            conversationId,
+            workspaceId
+    )).thenReturn(Optional.of(conversation));
+
+    Conversation result = conversationService.update(
+            workspaceId,
+            conversationId,
+            "  New title  "
+    );
+
+    assertThat(result).isSameAs(conversation);
+    assertThat(result.getTitle()).isEqualTo("New title");
+}
+
+@Test
+void shouldLeaveConversationUnchangedWhenUpdateTitleIsNull() {
+    Workspace workspace = createWorkspace();
+
+    Conversation conversation = new Conversation(
+            workspace,
+            "Original title"
+    );
+
+    UUID workspaceId = workspace.getId();
+    UUID conversationId = conversation.getId();
+
+    when(conversationRepository.findByIdAndWorkspaceId(
+            conversationId,
+            workspaceId
+    )).thenReturn(Optional.of(conversation));
+
+    Conversation result = conversationService.update(
+            workspaceId,
+            conversationId,
+            null
+    );
+
+    assertThat(result.getTitle()).isEqualTo("Original title");
+}
 }

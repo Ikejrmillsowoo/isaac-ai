@@ -140,4 +140,19 @@ public class ConversationService {
 
         return conversation;
     }
+
+    public Conversation update(
+        UUID workspaceId,
+        UUID conversationId,
+        String title
+) {
+    Conversation conversation =
+            findById(workspaceId, conversationId);
+
+    if (title != null) {
+        conversation.rename(title);
+    }
+
+    return conversation;
+}
 }

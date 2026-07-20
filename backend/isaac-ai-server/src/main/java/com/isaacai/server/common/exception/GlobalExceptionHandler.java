@@ -2,6 +2,7 @@ package com.isaacai.server.common.exception;
 
 import com.isaacai.server.workspace.exception.WorkspaceAlreadyExistsException;
 import com.isaacai.server.workspace.exception.WorkspaceNotFoundException;
+import com.isaacai.server.conversation.exception.ConversationNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -145,4 +147,17 @@ public class GlobalExceptionHandler {
 
         return body;
     }
+
+    @ExceptionHandler(ConversationNotFoundException.class)
+public ResponseEntity<Map<String, Object>>
+handleConversationNotFound(
+        ConversationNotFoundException exception,
+        HttpServletRequest request
+) {
+    return buildResponse(
+            HttpStatus.NOT_FOUND,
+            exception.getMessage(),
+            request.getRequestURI()
+    );
+}
 }
