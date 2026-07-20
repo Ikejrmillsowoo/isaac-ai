@@ -3,6 +3,7 @@ package com.isaacai.server.common.exception;
 import com.isaacai.server.workspace.exception.WorkspaceAlreadyExistsException;
 import com.isaacai.server.workspace.exception.WorkspaceNotFoundException;
 import com.isaacai.server.conversation.exception.ConversationNotFoundException;
+import com.isaacai.server.message.exception.MessageNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -152,6 +153,17 @@ public class GlobalExceptionHandler {
 public ResponseEntity<Map<String, Object>>
 handleConversationNotFound(
         ConversationNotFoundException exception,
+        HttpServletRequest request
+) {
+    return buildResponse(
+            HttpStatus.NOT_FOUND,
+            exception.getMessage(),
+            request.getRequestURI()
+    );
+}
+@ExceptionHandler(MessageNotFoundException.class)
+public ResponseEntity<Map<String, Object>> handleMessageNotFound(
+        MessageNotFoundException exception,
         HttpServletRequest request
 ) {
     return buildResponse(
