@@ -1,7 +1,13 @@
-package com.isaacai.chat.dto;
-
-import jakarta.validation.constraints.NotBlank;
-
 public record ChatRequest(
-                @NotBlank(message = "Message is required") String message) {
+
+        @NotNull
+        UUID workspaceId,
+
+        @NotNull
+        UUID conversationId,
+
+        @NotBlank
+        String message
+
+) {
 }
