@@ -61,6 +61,19 @@ public class MessageService {
     );
 }
 
+public Message createAssistantMessage(
+        UUID workspaceId,
+        UUID conversationId,
+        String content
+) {
+    return create(
+            workspaceId,
+            conversationId,
+            MessageRole.ASSISTANT,
+            content
+    );
+}
+
     @Transactional(readOnly = true)
     public Message findById(
             UUID workspaceId,
