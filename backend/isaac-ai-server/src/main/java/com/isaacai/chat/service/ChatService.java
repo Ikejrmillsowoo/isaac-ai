@@ -12,7 +12,7 @@ public class ChatService {
         this.aiChatClient = aiChatClient;
     }
 
-    public String generateResponse(String message) {
+    public ChatResponse chat(ChatRequest request) {
         return aiChatClient.generate(message);
     }
 }
