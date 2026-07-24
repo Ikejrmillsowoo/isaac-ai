@@ -1,24 +1,44 @@
-// package com.isaacai.chat.service;
+package com.isaacai.chat.service;
 
-// import com.isaacai.ai.client.AiStreamingClient;
-// import com.isaacai.server.message.model.Message;    
+import com.isaacai.ai.client.AiStreamingClient;
+import com.isaacai.chat.dto.ChatRequest;
+import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
+@Service
+public class ChatStreamingService {
 
-// public Flux<String> stream(ChatRequest request) {
+    private final AiStreamingClient aiStreamingClient;
+    private final ChatSessionService chatSessionService;
 
-//     Message userMessage = ...
+    public ChatStreamingService(
+            AiStreamingClient aiStreamingClient,
+            ChatSessionService chatSessionService
+    ) {
+        this.aiStreamingClient = aiStreamingClient;
+        this.chatSessionService = chatSessionService;
+    }
 
-//     List<Message> history = ...
+    public Flux<String> stream(ChatRequest request) {
 
-//     StringBuilder builder = new StringBuilder();
+        PreparedChat preparedChat =
+                chatSessionService.prepareConversation(request);
 
-//     return aiStreamingClient.stream(history)
-//             .doOnNext(builder::append)
-//             .doOnComplete(() ->
-//                     messageService.createAssistantMessage(
-//                             request.workspaceId(),
-//                             request.conversationId(),
-//                             builder.toString()
-//                     )
-//             );
-// }
+        StringBuilder assistantResponse =
+                new StringBuilder();
+
+        return aiStreamingClient
+                .stream(preparedChat.history())
+                .doOnNext(assistantResponse::append)
+                .doOnComplete(() -> {
+                    String answer = assistantResponse.toString();
+
+                    if (!answer.isBlank()) {
+                        chatSessionService.saveAssistantMessage(
+                                request,
+                                answer
+                        );
+                    }
+                });
+    }
+}

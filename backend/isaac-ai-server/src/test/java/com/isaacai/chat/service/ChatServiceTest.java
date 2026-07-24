@@ -4,11 +4,10 @@ import com.isaacai.ai.client.AiChatClient;
 import com.isaacai.chat.dto.ChatRequest;
 import com.isaacai.chat.dto.ChatResponse;
 import com.isaacai.server.message.model.Message;
-import com.isaacai.server.message.service.MessageService;
-import com.isaacai.support.TestDataFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -17,7 +16,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -27,7 +26,13 @@ class ChatServiceTest {
     private AiChatClient aiChatClient;
 
     @Mock
-    private MessageService messageService;
+    private ChatSessionService chatSessionService;
+
+    @Mock
+    private Message userMessage;
+
+    @Mock
+    private Message assistantMessage;
 
     private ChatService chatService;
 
@@ -35,85 +40,86 @@ class ChatServiceTest {
     void setUp() {
         chatService = new ChatService(
                 aiChatClient,
-                messageService
+                chatSessionService
         );
     }
 
     @Test
-    void shouldCreateUserMessageGenerateAnswerAndCreateAssistantMessage() {
+    void shouldPrepareConversationGenerateAnswerAndSaveAssistantMessage() {
+
         UUID workspaceId = UUID.randomUUID();
         UUID conversationId = UUID.randomUUID();
+        UUID userMessageId = UUID.randomUUID();
+        UUID assistantMessageId = UUID.randomUUID();
 
         ChatRequest request = new ChatRequest(
                 workspaceId,
                 conversationId,
                 "Hello Isaac AI"
         );
-        var workspace = TestDataFactory.workspace();
-var conversation =
-        TestDataFactory.conversation(workspace, "Test conversation");
 
-        Message userMessage =
-                TestDataFactory.userMessage(conversation, "Hello Isaac AI");
+        List<Message> history =
+                List.of(userMessage);
 
-        Message assistantMessage =
-                TestDataFactory.assistantMessage(conversation, "Hello Isaac");
+        PreparedChat preparedChat =
+                new PreparedChat(
+                        userMessage,
+                        history
+                );
 
-        List<Message> history = List.of(userMessage);
+        when(userMessage.getId())
+                .thenReturn(userMessageId);
 
-        when(messageService.createUserMessage(
-                workspaceId,
-                conversationId,
-                request.message()
-        )).thenReturn(userMessage);
+        when(assistantMessage.getId())
+                .thenReturn(assistantMessageId);
 
-        when(messageService.findConversationMessages(
-                workspaceId,
-                conversationId
-        )).thenReturn(history);
+        when(chatSessionService.prepareConversation(request))
+                .thenReturn(preparedChat);
 
         when(aiChatClient.chat(history))
-                .thenReturn("Hello Isaac");
+                .thenReturn("Hello Isaac!");
 
-        when(messageService.createAssistantMessage(
-                workspaceId,
-                conversationId,
-                "Hello Isaac"
+        when(chatSessionService.saveAssistantMessage(
+                request,
+                "Hello Isaac!"
         )).thenReturn(assistantMessage);
 
-        ChatResponse response = chatService.chat(request);
+        ChatResponse response =
+                chatService.chat(request);
 
         assertThat(response.conversationId())
                 .isEqualTo(conversationId);
 
         assertThat(response.userMessageId())
-                .isEqualTo(userMessage.getId());
+                .isEqualTo(userMessageId);
 
         assertThat(response.assistantMessageId())
-                .isEqualTo(assistantMessage.getId());
+                .isEqualTo(assistantMessageId);
 
         assertThat(response.answer())
-                .isEqualTo("Hello Isaac");
+                .isEqualTo("Hello Isaac!");
 
-        var order = inOrder(messageService, aiChatClient);
+        InOrder order =
+                inOrder(
+                        chatSessionService,
+                        aiChatClient
+                );
 
-        order.verify(messageService).createUserMessage(
-                workspaceId,
-                conversationId,
-                request.message()
-        );
+        order.verify(chatSessionService)
+                .prepareConversation(request);
 
-        order.verify(messageService).findConversationMessages(
-                workspaceId,
-                conversationId
-        );
+        order.verify(aiChatClient)
+                .chat(history);
 
-        order.verify(aiChatClient).chat(history);
+        order.verify(chatSessionService)
+                .saveAssistantMessage(
+                        request,
+                        "Hello Isaac!"
+                );
 
-        order.verify(messageService).createAssistantMessage(
-                workspaceId,
-                conversationId,
-                "Hello Isaac"
+        verifyNoMoreInteractions(
+                chatSessionService,
+                aiChatClient
         );
     }
 }

@@ -10,6 +10,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.isaacai.chat.service.ChatStreamingService;
+
+import org.springframework.http.MediaType;
+import reactor.core.publisher.Flux;
+
 
 @RestController
 @RequestMapping("/api/chat")
@@ -17,9 +22,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class ChatController {
 
     private final ChatService chatService;
+    private final ChatStreamingService chatStreamingService;
 
-    public ChatController(ChatService chatService) {
+    public ChatController(ChatService chatService, ChatStreamingService chatStreamingService) {
         this.chatService = chatService;
+        this.chatStreamingService = chatStreamingService;
     }
 
     @PostMapping
@@ -28,4 +35,14 @@ public class ChatController {
     ) {
         return chatService.chat(request);
     }
+
+    @PostMapping(
+        value = "/stream",
+        produces = MediaType.TEXT_EVENT_STREAM_VALUE
+)
+public Flux<String> stream(
+        @RequestBody ChatRequest request
+) {
+    return chatStreamingService.stream(request);
+}
 }
