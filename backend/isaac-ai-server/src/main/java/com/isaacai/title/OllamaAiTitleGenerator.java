@@ -2,6 +2,7 @@ package com.isaacai.ai.title;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Component;
+import com.isaacai.title.AiTitleGenerator;
 
 @Component
 public class OllamaAiTitleGenerator

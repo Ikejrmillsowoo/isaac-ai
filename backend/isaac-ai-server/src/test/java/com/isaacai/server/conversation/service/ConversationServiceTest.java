@@ -369,7 +369,7 @@ void shouldUpdateConversationTitle() {
             workspaceId
     )).thenReturn(Optional.of(conversation));
 
-    Conversation result = conversationService.update(
+    Conversation result = conversationService.rename(
             workspaceId,
             conversationId,
             "  New title  "
@@ -404,4 +404,6 @@ void shouldLeaveConversationUnchangedWhenUpdateTitleIsNull() {
 
     assertThat(result.getTitle()).isEqualTo("Original title");
 }
+
+
 }

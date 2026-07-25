@@ -87,7 +87,7 @@ public class ConversationController {
             @Valid @RequestBody UpdateConversationRequest request
     ) {
         Conversation conversation =
-                conversationService.update(
+                conversationService.rename(
                         workspaceId,
                         conversationId,
                         request.title()

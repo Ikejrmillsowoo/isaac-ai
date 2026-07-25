@@ -1,4 +1,4 @@
-package com.isaacai.ai.title;
+package com.isaacai.title;
 
 public interface AiTitleGenerator {
 

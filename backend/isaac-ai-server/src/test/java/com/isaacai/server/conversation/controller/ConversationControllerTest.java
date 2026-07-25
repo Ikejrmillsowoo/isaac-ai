@@ -27,6 +27,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
 class ConversationControllerTest {
@@ -290,28 +291,21 @@ class ConversationControllerTest {
                         ));
     }
 
+
    @Test
 void shouldUpdateConversation() throws Exception {
     Workspace workspace = workspace();
 
     Conversation conversation = conversation(
             workspace,
-            "Original title"
+            "New title"
     );
 
-    conversation.rename("Updated title");
-
-    when(conversationService.update(
+    when(conversationService.rename(
             workspace.getId(),
             conversation.getId(),
-            "Updated title"
+            "New title"
     )).thenReturn(conversation);
-
-    String requestBody = """
-            {
-              "title": "Updated title"
-            }
-            """;
 
     mockMvc.perform(
                     patch(
@@ -320,20 +314,32 @@ void shouldUpdateConversation() throws Exception {
                             conversation.getId()
                     )
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(requestBody)
+                            .content("""
+                                    {
+                                      "title": "New title"
+                                    }
+                                    """)
             )
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id")
                     .value(conversation.getId().toString()))
+            .andExpect(jsonPath("$.workspaceId")
+                    .value(workspace.getId().toString()))
             .andExpect(jsonPath("$.title")
-                    .value("Updated title"));
+                    .value("New title"))
+            .andExpect(jsonPath("$.pinned")
+                    .value(false))
+            .andExpect(jsonPath("$.archived")
+                    .value(false));
 
-    verify(conversationService).update(
+    verify(conversationService).rename(
             workspace.getId(),
             conversation.getId(),
-            "Updated title"
+            "New title"
     );
+
 }
+
 
     @Test
     void shouldRejectUpdateRequestWhenTitleIsMissing()

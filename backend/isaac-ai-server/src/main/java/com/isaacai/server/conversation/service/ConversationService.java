@@ -8,6 +8,10 @@ import com.isaacai.server.workspace.service.WorkspaceService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+
+import com.isaacai.title.AiTitleGenerator;
+import com.isaacai.server.conversation.service.ConversationService;
+
 import java.util.List;
 import java.util.UUID;
 
@@ -17,6 +21,7 @@ public class ConversationService {
 
     private final ConversationRepository conversationRepository;
     private final WorkspaceService workspaceService;
+  
 
     public ConversationService(
             ConversationRepository conversationRepository,
@@ -24,6 +29,8 @@ public class ConversationService {
     ) {
         this.conversationRepository = conversationRepository;
         this.workspaceService = workspaceService;
+      
+
     }
 
     public Conversation create(
@@ -93,6 +100,21 @@ public class ConversationService {
         return conversation;
     }
 
+    public Conversation update(
+        UUID workspaceId,
+        UUID conversationId,
+        String title
+) {
+    Conversation conversation =
+            findById(workspaceId, conversationId);
+
+    if (title != null) {
+        conversation.rename(title);
+    }
+
+    return conversation;
+}
+
     public Conversation pin(
             UUID workspaceId,
             UUID conversationId
@@ -141,18 +163,7 @@ public class ConversationService {
         return conversation;
     }
 
-    public Conversation update(
-        UUID workspaceId,
-        UUID conversationId,
-        String title
-) {
-    Conversation conversation =
-            findById(workspaceId, conversationId);
+   
 
-    if (title != null) {
-        conversation.rename(title);
-    }
 
-    return conversation;
-}
 }

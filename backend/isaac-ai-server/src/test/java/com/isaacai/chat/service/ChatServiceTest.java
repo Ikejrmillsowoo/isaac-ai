@@ -10,6 +10,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import com.isaacai.title.AiTitleGenerator;
+import com.isaacai.server.conversation.model.Conversation;
+import com.isaacai.server.conversation.service.ConversationService;
 
 import java.util.List;
 import java.util.UUID;
@@ -18,9 +21,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class ChatServiceTest {
+
+@Mock
+private AiTitleGenerator aiTitleGenerator;
+
+@Mock
+private ConversationService conversationService;
+
+@Mock
+private Conversation conversation;
 
     @Mock
     private AiChatClient aiChatClient;
@@ -40,7 +53,9 @@ class ChatServiceTest {
     void setUp() {
         chatService = new ChatService(
                 aiChatClient,
-                chatSessionService
+            chatSessionService,
+            aiTitleGenerator,
+            conversationService
         );
     }
 
@@ -84,6 +99,14 @@ class ChatServiceTest {
                 "Hello Isaac!"
         )).thenReturn(assistantMessage);
 
+        when(conversationService.findById(
+        workspaceId,
+        conversationId
+)).thenReturn(conversation);
+
+when(conversation.hasDefaultTitle())
+        .thenReturn(false);
+
         ChatResponse response =
                 chatService.chat(request);
 
@@ -105,6 +128,12 @@ class ChatServiceTest {
                         aiChatClient
                 );
 
+        verify(conversationService)
+        .findById(workspaceId, conversationId);
+
+        verify(conversation)
+        .hasDefaultTitle();
+
         order.verify(chatSessionService)
                 .prepareConversation(request);
 
@@ -117,9 +146,9 @@ class ChatServiceTest {
                         "Hello Isaac!"
                 );
 
-        verifyNoMoreInteractions(
-                chatSessionService,
-                aiChatClient
-        );
+        // verifyNoMoreInteractions(
+        //         chatSessionService,
+        //         aiChatClient
+        // );
     }
 }

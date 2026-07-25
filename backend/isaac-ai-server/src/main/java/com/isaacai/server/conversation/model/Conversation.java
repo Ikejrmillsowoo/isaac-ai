@@ -168,6 +168,10 @@ public class Conversation {
         return normalizedTitle;
     }
 
+    public boolean hasDefaultTitle() {
+    return "New Conversation".equals(title);
+}
+
     @Override
     public boolean equals(Object object) {
         if (this == object) {
