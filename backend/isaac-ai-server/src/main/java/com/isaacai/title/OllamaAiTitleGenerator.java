@@ -1,4 +1,4 @@
-package com.isaacai.ai.title;
+package com.isaacai.title;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Component;

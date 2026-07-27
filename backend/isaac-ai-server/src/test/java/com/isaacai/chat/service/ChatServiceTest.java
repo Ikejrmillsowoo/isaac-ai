@@ -22,6 +22,7 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
 class ChatServiceTest {
@@ -151,4 +152,70 @@ when(conversation.hasDefaultTitle())
         //         aiChatClient
         // );
     }
+
+    @Test
+void shouldGenerateConversationTitleForNewConversation() {
+
+    UUID workspaceId = UUID.randomUUID();
+    UUID conversationId = UUID.randomUUID();
+
+    ChatRequest request =
+            new ChatRequest(
+                    workspaceId,
+                    conversationId,
+                    "Help me prepare for a Java interview"
+            );
+
+    Message userMessage = mock(Message.class);
+    Message assistantMessage = mock(Message.class);
+
+    List<Message> history = List.of(userMessage);
+
+    PreparedChat preparedChat =
+            new PreparedChat(
+                    userMessage,
+                    history
+            );
+
+    Conversation conversation = mock(Conversation.class);
+
+    when(chatSessionService.prepareConversation(request))
+            .thenReturn(preparedChat);
+
+    when(aiChatClient.chat(history))
+            .thenReturn("Here is a study plan...");
+
+    when(chatSessionService.saveAssistantMessage(
+            request,
+            "Here is a study plan..."
+    )).thenReturn(assistantMessage);
+
+    when(conversationService.findById(
+            workspaceId,
+            conversationId
+    )).thenReturn(conversation);
+
+    when(conversation.hasDefaultTitle())
+            .thenReturn(true);
+
+    when(aiTitleGenerator.generateTitle(
+            request.message()
+    )).thenReturn(
+            "Java Interview Preparation"
+    );
+
+    chatService.chat(request);
+
+    verify(aiTitleGenerator)
+            .generateTitle(
+                    request.message()
+            );
+
+    verify(conversationService)
+            .rename(
+                    workspaceId,
+                    conversationId,
+                    "Java Interview Preparation"
+            );
+}
 }
