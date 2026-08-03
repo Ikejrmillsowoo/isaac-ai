@@ -6,6 +6,8 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
+import com.isaacai.ai.mapper.AiMessageMapper;
 
 import java.util.List;
 
@@ -13,19 +15,15 @@ import java.util.List;
 public class OllamaAiChatClient implements AiChatClient {
 
     private final ChatClient chatClient;
+    private final AiMessageMapper aiMessageMapper;
 
-    public OllamaAiChatClient(ChatClient.Builder builder) {
-        this.chatClient = builder
-                .defaultSystem("""
-                        You are Isaac AI, a private personal assistant.
-                        Be clear, practical, and accurate.
-                        Do not invent facts.
-                        """)
-                .build();
+    public OllamaAiChatClient(ChatClient.Builder builder, AiMessageMapper aiMessageMapper) {
+        this.chatClient = builder.build();
+        this.aiMessageMapper = aiMessageMapper;
     }
 
     @Override
-    public String chat(List<Message> history) {
+    public String chat(String systemPrompt,List<Message> history) {
 
         List<org.springframework.ai.chat.messages.Message> aiMessages =
                 history.stream()
@@ -34,6 +32,7 @@ public class OllamaAiChatClient implements AiChatClient {
 
         return chatClient
                 .prompt()
+                .system(systemPrompt)
                 .messages(aiMessages)
                 .call()
                 .content();

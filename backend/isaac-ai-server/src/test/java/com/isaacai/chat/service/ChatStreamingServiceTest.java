@@ -1,11 +1,13 @@
 package com.isaacai.chat.service;
 
 import com.isaacai.ai.client.AiStreamingClient;
-import com.isaacai.title.AiTitleGenerator;
 import com.isaacai.chat.dto.ChatRequest;
 import com.isaacai.server.conversation.model.Conversation;
 import com.isaacai.server.conversation.service.ConversationService;
 import com.isaacai.server.message.model.Message;
+import com.isaacai.server.workspace.model.Workspace;
+import com.isaacai.server.workspace.service.WorkspaceService;
+import com.isaacai.title.AiTitleGenerator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,10 +38,16 @@ class ChatStreamingServiceTest {
     private ConversationService conversationService;
 
     @Mock
+    private WorkspaceService workspaceService;
+
+    @Mock
     private Message userMessage;
 
     @Mock
     private Conversation conversation;
+
+    @Mock
+    private Workspace workspace;
 
     private ChatStreamingService chatStreamingService;
 
@@ -49,7 +57,8 @@ class ChatStreamingServiceTest {
                 aiStreamingClient,
                 chatSessionService,
                 aiTitleGenerator,
-                conversationService
+                conversationService,
+                workspaceService
         );
     }
 
@@ -57,6 +66,9 @@ class ChatStreamingServiceTest {
     void shouldStreamAndSaveAssistantMessage() {
         UUID workspaceId = UUID.randomUUID();
         UUID conversationId = UUID.randomUUID();
+
+        String systemPrompt =
+                "Act as a helpful personal assistant.";
 
         ChatRequest request = new ChatRequest(
                 workspaceId,
@@ -67,13 +79,26 @@ class ChatStreamingServiceTest {
         List<Message> history = List.of(userMessage);
 
         PreparedChat preparedChat =
-                new PreparedChat(userMessage, history);
+                new PreparedChat(
+                        userMessage,
+                        history
+                );
 
         when(chatSessionService.prepareConversation(request))
                 .thenReturn(preparedChat);
 
-        when(aiStreamingClient.stream(history))
-                .thenReturn(Flux.just("Hello", " Isaac"));
+        when(workspaceService.findById(workspaceId))
+                .thenReturn(workspace);
+
+        when(workspace.getSystemPrompt())
+                .thenReturn(systemPrompt);
+
+        when(aiStreamingClient.stream(
+                systemPrompt,
+                history
+        )).thenReturn(
+                Flux.just("Hello", " Isaac")
+        );
 
         when(conversationService.findById(
                 workspaceId,
@@ -94,6 +119,18 @@ class ChatStreamingServiceTest {
                 .saveAssistantMessage(
                         request,
                         "Hello Isaac"
+                );
+
+        verify(workspaceService)
+                .findById(workspaceId);
+
+        verify(workspace)
+                .getSystemPrompt();
+
+        verify(aiStreamingClient)
+                .stream(
+                        systemPrompt,
+                        history
                 );
 
         verify(conversationService)

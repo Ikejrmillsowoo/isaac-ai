@@ -7,6 +7,9 @@ import java.util.List;
 
 public interface AiStreamingClient {
 
-    Flux<String> stream(List<Message> history);
+    Flux<String> stream(        
+        String systemPrompt,
+        List<Message> history
+    );
 
 }

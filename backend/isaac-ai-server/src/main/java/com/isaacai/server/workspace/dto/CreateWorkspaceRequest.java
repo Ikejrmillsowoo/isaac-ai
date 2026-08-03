@@ -18,6 +18,7 @@ public record CreateWorkspaceRequest(
         )
         String description,
 
+        @NotBlank(message = "Model is required")
         @Size(
                 max = 10000,
                 message = "System prompt must not exceed 10000 characters"

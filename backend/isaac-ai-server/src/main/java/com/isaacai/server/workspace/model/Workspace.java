@@ -84,8 +84,15 @@ public class Workspace {
     }
 
     public void updateSystemPrompt(String systemPrompt) {
-        this.systemPrompt = normalizeOptionalText(systemPrompt);
+        if (systemPrompt == null || systemPrompt.isBlank()) {
+        this.systemPrompt = null;
+        return;
     }
+
+    this.systemPrompt = systemPrompt.trim();
+}
+       
+    
 
     public void updateColor(String color) {
         this.color = normalizeOptionalText(color);
@@ -174,4 +181,5 @@ public class Workspace {
     public int hashCode() {
         return Objects.hashCode(id);
     }
+
 }
