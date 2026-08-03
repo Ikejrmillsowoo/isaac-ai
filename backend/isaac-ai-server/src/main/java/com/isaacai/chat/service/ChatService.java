@@ -20,7 +20,11 @@ public class ChatService {
     private final ConversationService conversationService;
     private final WorkspaceService workspaceService;
 
-
+private static final String DEFAULT_SYSTEM_PROMPT = """
+        You are Isaac AI, a private personal assistant.
+        Be clear, practical, and accurate.
+        Do not invent facts.
+        """;
 
 
     public ChatService(
@@ -44,10 +48,12 @@ public class ChatService {
         PreparedChat preparedChat =
                 chatSessionService.prepareConversation(request);
 
-        String systemPrompt =
-        workspaceService.findById(
-                request.workspaceId()
-        ).getSystemPrompt();
+       String systemPrompt =
+        resolveSystemPrompt(
+                workspaceService.findById(
+                        request.workspaceId()
+                ).getSystemPrompt()
+        );
 
         String answer =
                 aiChatClient.chat(systemPrompt, preparedChat.history());
@@ -85,4 +91,12 @@ if (conversation.hasDefaultTitle()) {
                 answer
         );
     }
+
+    private String resolveSystemPrompt(String systemPrompt) {
+    if (systemPrompt == null || systemPrompt.isBlank()) {
+        return DEFAULT_SYSTEM_PROMPT;
+    }
+
+    return systemPrompt.trim();
+}
 }

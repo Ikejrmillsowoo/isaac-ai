@@ -4,6 +4,10 @@ import { sendChatMessage } from "./services/chatApi";
 import type { ChatMessage } from "./types/chat";
 import "./App.css";
 
+const WORKSPACE_ID = "4aa0a5a1-be58-48a3-977a-97a2e5b74bf6";
+
+const CONVERSATION_ID = "e889b7a2-94a2-41fa-a72e-88b629861e71";
+
 function App() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -11,7 +15,7 @@ function App() {
   const [error, setError] = useState("");
 
   async function handleSubmit(
-    event: SyntheticEvent<HTMLFormElement>
+    event: SyntheticEvent<HTMLFormElement>,
   ): Promise<void> {
     event.preventDefault();
 
@@ -27,10 +31,7 @@ function App() {
       content: messageText,
     };
 
-    setMessages((currentMessages) => [
-      ...currentMessages,
-      userMessage,
-    ]);
+    setMessages((currentMessages) => [...currentMessages, userMessage]);
 
     setInput("");
     setError("");
@@ -38,19 +39,18 @@ function App() {
 
     try {
       const response = await sendChatMessage({
+        workspaceId: WORKSPACE_ID,
+        conversationId: CONVERSATION_ID,
         message: messageText,
       });
 
       const assistantMessage: ChatMessage = {
-        id: crypto.randomUUID(),
+        id: response.assistantMessageId,
         role: "assistant",
         content: response.answer,
       };
 
-      setMessages((currentMessages) => [
-        ...currentMessages,
-        assistantMessage,
-      ]);
+      setMessages((currentMessages) => [...currentMessages, assistantMessage]);
     } catch (requestError) {
       const errorMessage =
         requestError instanceof Error
@@ -72,11 +72,7 @@ function App() {
         </div>
 
         <div className="status">
-          <span
-            className={`status-dot ${
-              isLoading ? "working" : "ready"
-            }`}
-          />
+          <span className={`status-dot ${isLoading ? "working" : "ready"}`} />
 
           {isLoading ? "Thinking" : "Ready"}
         </div>
@@ -87,9 +83,7 @@ function App() {
           <div className="empty-state">
             <h2>Welcome to Isaac AI</h2>
 
-            <p>
-              Ask a question to test your locally running assistant.
-            </p>
+            <p>Ask a question to test your locally running assistant.</p>
           </div>
         ) : (
           <div className="message-list">
@@ -98,9 +92,7 @@ function App() {
                 key={message.id}
                 className={`message message-${message.role}`}
               >
-                <strong>
-                  {message.role === "user" ? "You" : "Isaac AI"}
-                </strong>
+                <strong>{message.role === "user" ? "You" : "Isaac AI"}</strong>
 
                 <p>{message.content}</p>
               </article>
@@ -136,10 +128,7 @@ function App() {
           disabled={isLoading}
         />
 
-        <button
-          type="submit"
-          disabled={isLoading || !input.trim()}
-        >
+        <button type="submit" disabled={isLoading || !input.trim()}>
           {isLoading ? "Thinking…" : "Send"}
         </button>
       </form>
