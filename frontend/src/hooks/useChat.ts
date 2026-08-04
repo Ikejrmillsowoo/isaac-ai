@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { SyntheticEvent } from "react";
 
-import { sendChatMessage } from "../services/chatApi";
+import {
+  streamChatMessage,
+  getConversationMessages,
+} from "../services/chatApi";
 import type { ChatMessage } from "../types/chat";
 
 interface UseChatOptions {
@@ -15,6 +18,61 @@ export function useChat({ workspaceId, conversationId }: UseChatOptions) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadMessages(): Promise<void> {
+      if (!workspaceId || !conversationId) {
+        setMessages([]);
+        return;
+      }
+
+      setIsLoading(true);
+      setError("");
+      setMessages([]);
+
+      try {
+        const storedMessages = await getConversationMessages(
+          workspaceId,
+          conversationId,
+        );
+
+        if (isCancelled) {
+          return;
+        }
+
+        const mappedMessages: ChatMessage[] = storedMessages.map((message) => ({
+          id: message.id,
+          role: message.role === "USER" ? "user" : "assistant",
+          content: message.content,
+        }));
+
+        setMessages(mappedMessages);
+      } catch (requestError) {
+        if (isCancelled) {
+          return;
+        }
+
+        const errorMessage =
+          requestError instanceof Error
+            ? requestError.message
+            : "Unable to load conversation messages.";
+
+        setError(errorMessage);
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadMessages();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [workspaceId, conversationId]);
+
   async function handleSubmit(
     event: SyntheticEvent<HTMLFormElement>,
   ): Promise<void> {
@@ -25,7 +83,7 @@ export function useChat({ workspaceId, conversationId }: UseChatOptions) {
   async function sendMessage(): Promise<void> {
     const messageText = input.trim();
 
-    if (!messageText || isLoading) {
+    if (!messageText || isLoading || !workspaceId || !conversationId) {
       return;
     }
 
@@ -44,29 +102,35 @@ export function useChat({ workspaceId, conversationId }: UseChatOptions) {
     setIsLoading(true);
 
     try {
-      const response = await sendChatMessage({
-        workspaceId,
-        conversationId,
-        message: messageText,
-      });
+      const temporaryAssistantMessageId = crypto.randomUUID();
 
       const assistantMessage: ChatMessage = {
-        id: response.assistantMessageId,
+        id: temporaryAssistantMessageId,
         role: "assistant",
-        content: response.answer,
+        content: "",
       };
 
-      setMessages((currentMessages) => [
-        ...currentMessages.map((message) =>
-          message.id === temporaryUserMessageId
-            ? {
-                ...message,
-                id: response.userMessageId,
-              }
-            : message,
-        ),
-        assistantMessage,
-      ]);
+      setMessages((currentMessages) => [...currentMessages, assistantMessage]);
+
+      await streamChatMessage(
+        {
+          workspaceId,
+          conversationId,
+          message: messageText,
+        },
+        (chunk) => {
+          setMessages((currentMessages) =>
+            currentMessages.map((message) =>
+              message.id === temporaryAssistantMessageId
+                ? {
+                    ...message,
+                    content: message.content + chunk,
+                  }
+                : message,
+            ),
+          );
+        },
+      );
     } catch (requestError) {
       const errorMessage =
         requestError instanceof Error

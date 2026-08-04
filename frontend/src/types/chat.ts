@@ -6,6 +6,15 @@ export interface ChatMessage {
   content: string;
 }
 
+export interface StoredMessageResponse {
+  id: string;
+  conversationId: string;
+  role: "USER" | "ASSISTANT";
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ChatRequest {
   workspaceId: string;
   conversationId: string;

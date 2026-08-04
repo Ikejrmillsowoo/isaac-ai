@@ -1,4 +1,8 @@
-import type { ChatRequest, ChatResponse } from "../types/chat";
+import type {
+  ChatRequest,
+  ChatResponse,
+  StoredMessageResponse,
+} from "../types/chat";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
@@ -47,4 +51,64 @@ async function extractErrorMessage(response: Response): Promise<string> {
   } catch {
     return rawBody;
   }
+}
+
+export async function streamChatMessage(
+  request: ChatRequest,
+  onChunk: (chunk: string) => void,
+): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/chat/stream`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "text/event-stream",
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    throw new Error(await extractErrorMessage(response));
+  }
+
+  if (!response.body) {
+    throw new Error("The streaming response did not contain a body.");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+
+  while (true) {
+    const { value, done } = await reader.read();
+
+    if (done) {
+      break;
+    }
+
+    const chunk = decoder.decode(value, {
+      stream: true,
+    });
+
+    onChunk(chunk);
+  }
+}
+
+export async function getConversationMessages(
+  workspaceId: string,
+  conversationId: string,
+): Promise<StoredMessageResponse[]> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/workspaces/${workspaceId}/conversations/${conversationId}/messages`,
+    {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await extractErrorMessage(response));
+  }
+
+  return (await response.json()) as StoredMessageResponse[];
 }
