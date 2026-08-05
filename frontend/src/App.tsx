@@ -1,23 +1,26 @@
 import { ChatHeader } from "./components/chat/ChatHeader";
 import { ChatInput } from "./components/chat/ChatInput";
 import { ChatWindow } from "./components/chat/ChatWindow";
-import { useChat } from "./hooks/useChat";
 import { ConversationSidebar } from "./components/sidebar/ConversationSidebar";
-import { useConversations } from "./hooks/useConversations";
+import {
+  ConversationProvider,
+  useConversationContext,
+} from "./context/ConversationContext";
+import { useChat } from "./hooks/useChat";
 import "./App.css";
 
 const WORKSPACE_ID = "4aa0a5a1-be58-48a3-977a-97a2e5b74bf6";
 
-const CONVERSATION_ID = "e889b7a2-94a2-41fa-a72e-88b629861e71";
-
-function App() {
+function IsaacAiApp() {
   const {
     conversations,
     selectedConversation,
     selectConversation,
+    createNewConversation,
     isLoading: conversationsLoading,
+    isCreating,
     error: conversationsError,
-  } = useConversations(WORKSPACE_ID, CONVERSATION_ID);
+  } = useConversationContext();
 
   const conversationId = selectedConversation?.id ?? "";
 
@@ -34,8 +37,10 @@ function App() {
         conversations={conversations}
         selectedConversationId={selectedConversation?.id}
         isLoading={conversationsLoading}
+        isCreating={isCreating}
         error={conversationsError}
         onSelect={selectConversation}
+        onCreate={createNewConversation}
       />
 
       <section className="app">
@@ -58,6 +63,14 @@ function App() {
         />
       </section>
     </main>
+  );
+}
+
+function App() {
+  return (
+    <ConversationProvider workspaceId={WORKSPACE_ID}>
+      <IsaacAiApp />
+    </ConversationProvider>
   );
 }
 

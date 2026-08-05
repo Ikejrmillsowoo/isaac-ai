@@ -1,4 +1,7 @@
-import type { Conversation } from "../types/conversation";
+import type {
+  Conversation,
+  CreateConversationRequest,
+} from "../types/conversation";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
@@ -42,4 +45,27 @@ async function extractErrorMessage(response: Response): Promise<string> {
   } catch {
     return responseText;
   }
+}
+
+export async function createConversation(
+  workspaceId: string,
+  request: CreateConversationRequest,
+): Promise<Conversation> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/workspaces/${workspaceId}/conversations`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await extractErrorMessage(response));
+  }
+
+  return (await response.json()) as Conversation;
 }

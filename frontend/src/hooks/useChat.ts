@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import type { SyntheticEvent } from "react";
+import { useConversationContext } from "../context/ConversationContext";
 
 import {
   streamChatMessage,
@@ -17,6 +18,8 @@ export function useChat({ workspaceId, conversationId }: UseChatOptions) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const { refreshConversations } = useConversationContext();
 
   useEffect(() => {
     let isCancelled = false;
@@ -131,6 +134,7 @@ export function useChat({ workspaceId, conversationId }: UseChatOptions) {
           );
         },
       );
+      await refreshConversations();
     } catch (requestError) {
       const errorMessage =
         requestError instanceof Error

@@ -7,3 +7,7 @@ export interface Conversation {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface CreateConversationRequest {
+  title: string;
+}
