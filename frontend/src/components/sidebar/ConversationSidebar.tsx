@@ -20,7 +20,7 @@ export function ConversationSidebar({
   onCreate,
 }: ConversationSidebarProps) {
   return (
-    <aside className="conversation-sidebar">
+    <section className="conversation-section">
       <div className="sidebar-header">
         <div>
           <p className="eyebrow">Conversations</p>
@@ -72,6 +72,6 @@ export function ConversationSidebar({
             );
           })}
       </div>
-    </aside>
+    </section>
   );
 }

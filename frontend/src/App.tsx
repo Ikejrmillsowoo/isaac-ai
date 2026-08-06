@@ -2,16 +2,49 @@ import { ChatHeader } from "./components/chat/ChatHeader";
 import { ChatInput } from "./components/chat/ChatInput";
 import { ChatWindow } from "./components/chat/ChatWindow";
 import { ConversationSidebar } from "./components/sidebar/ConversationSidebar";
+import { WorkspaceSelector } from "./components/sidebar/WorkspaceSelector";
 import {
   ConversationProvider,
   useConversationContext,
 } from "./context/ConversationContext";
+import {
+  WorkspaceProvider,
+  useWorkspaceContext,
+} from "./context/WorkspaceContext";
 import { useChat } from "./hooks/useChat";
 import "./App.css";
 
-const WORKSPACE_ID = "4aa0a5a1-be58-48a3-977a-97a2e5b74bf6";
+function ConversationArea() {
+  const { selectedWorkspace } = useWorkspaceContext();
+
+  if (!selectedWorkspace) {
+    return (
+      <main className="application-shell">
+        <section className="app">
+          <div className="empty-state">
+            <h2>No workspace selected</h2>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <ConversationProvider workspaceId={selectedWorkspace.id}>
+      <IsaacAiApp />
+    </ConversationProvider>
+  );
+}
 
 function IsaacAiApp() {
+  const {
+    workspaces,
+    selectedWorkspace,
+    selectWorkspace,
+    isLoading: workspacesLoading,
+    error: workspacesError,
+  } = useWorkspaceContext();
+
   const {
     conversations,
     selectedConversation,
@@ -22,26 +55,38 @@ function IsaacAiApp() {
     error: conversationsError,
   } = useConversationContext();
 
+  const workspaceId = selectedWorkspace?.id ?? "";
+
   const conversationId = selectedConversation?.id ?? "";
 
   const { input, setInput, messages, isLoading, error, handleSubmit } = useChat(
     {
-      workspaceId: WORKSPACE_ID,
+      workspaceId,
       conversationId,
     },
   );
 
   return (
     <main className="application-shell">
-      <ConversationSidebar
-        conversations={conversations}
-        selectedConversationId={selectedConversation?.id}
-        isLoading={conversationsLoading}
-        isCreating={isCreating}
-        error={conversationsError}
-        onSelect={selectConversation}
-        onCreate={createNewConversation}
-      />
+      <aside className="conversation-sidebar">
+        <WorkspaceSelector
+          workspaces={workspaces}
+          selectedWorkspaceId={selectedWorkspace?.id}
+          isLoading={workspacesLoading}
+          error={workspacesError}
+          onSelect={selectWorkspace}
+        />
+
+        <ConversationSidebar
+          conversations={conversations}
+          selectedConversationId={selectedConversation?.id}
+          isLoading={conversationsLoading}
+          isCreating={isCreating}
+          error={conversationsError}
+          onSelect={selectConversation}
+          onCreate={createNewConversation}
+        />
+      </aside>
 
       <section className="app">
         <ChatHeader isLoading={isLoading} />
@@ -68,9 +113,9 @@ function IsaacAiApp() {
 
 function App() {
   return (
-    <ConversationProvider workspaceId={WORKSPACE_ID}>
-      <IsaacAiApp />
-    </ConversationProvider>
+    <WorkspaceProvider>
+      <ConversationArea />
+    </WorkspaceProvider>
   );
 }
 

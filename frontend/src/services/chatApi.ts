@@ -61,7 +61,7 @@ export async function streamChatMessage(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Accept: "text/event-stream",
+      Accept: "text/plain",
     },
     body: JSON.stringify(request),
   });
@@ -81,6 +81,12 @@ export async function streamChatMessage(
     const { value, done } = await reader.read();
 
     if (done) {
+      const remainingText = decoder.decode();
+
+      if (remainingText) {
+        onChunk(remainingText);
+      }
+
       break;
     }
 
@@ -88,7 +94,9 @@ export async function streamChatMessage(
       stream: true,
     });
 
-    onChunk(chunk);
+    if (chunk) {
+      onChunk(chunk);
+    }
   }
 }
 

@@ -134,6 +134,7 @@ export function useChat({ workspaceId, conversationId }: UseChatOptions) {
           );
         },
       );
+
       await refreshConversations();
     } catch (requestError) {
       const errorMessage =
@@ -146,7 +147,6 @@ export function useChat({ workspaceId, conversationId }: UseChatOptions) {
       setIsLoading(false);
     }
   }
-
   return {
     input,
     setInput,

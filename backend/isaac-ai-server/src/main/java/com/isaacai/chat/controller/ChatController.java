@@ -36,7 +36,7 @@ public class ChatController {
 
     @PostMapping(
         value = "/stream",
-        produces = MediaType.TEXT_EVENT_STREAM_VALUE
+        produces = MediaType.TEXT_PLAIN_VALUE
 )
 public Flux<String> stream(
         @RequestBody ChatRequest request

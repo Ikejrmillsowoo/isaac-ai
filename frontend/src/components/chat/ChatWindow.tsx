@@ -17,16 +17,20 @@ export function ChatWindow({ messages, isLoading }: ChatWindowProps) {
         </div>
       ) : (
         <div className="message-list">
-          {messages.map((message) => (
-            <MessageBubble key={message.id} message={message} />
-          ))}
+          {messages.map((message, index) => {
+            const isLastMessage = index === messages.length - 1;
 
-          {isLoading && (
-            <article className="message message-assistant">
-              <strong>Isaac AI</strong>
-              <p>Thinking…</p>
-            </article>
-          )}
+            const isStreaming =
+              isLoading && isLastMessage && message.role === "assistant";
+
+            return (
+              <MessageBubble
+                key={message.id}
+                message={message}
+                isStreaming={isStreaming}
+              />
+            );
+          })}
         </div>
       )}
     </section>
