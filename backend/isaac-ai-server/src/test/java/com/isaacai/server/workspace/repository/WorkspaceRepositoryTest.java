@@ -8,6 +8,9 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 
 import com.isaacai.server.workspace.model.Workspace;
 import com.isaacai.server.workspace.repository.WorkspaceRepository;
+import com.isaacai.server.knowledge.repository.KnowledgeDocumentRepository;
+
+
 
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 
@@ -21,9 +24,13 @@ class WorkspaceRepositoryTest {
     @Autowired
     private WorkspaceRepository workspaceRepository;
 
+@Autowired
+private KnowledgeDocumentRepository knowledgeDocumentRepository;
+
      @BeforeEach
     void cleanDatabase() {
-        workspaceRepository.deleteAll();
+         knowledgeDocumentRepository.deleteAll();
+    workspaceRepository.deleteAll();
     }
 
     @Test

@@ -116,6 +116,8 @@ public class GlobalExceptionHandler {
             Exception exception,
             HttpServletRequest request
     ) {
+
+        exception.printStackTrace();
         return buildResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "Isaac AI could not complete the request.",
