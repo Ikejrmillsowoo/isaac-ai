@@ -7,6 +7,12 @@ import com.isaacai.server.workspace.service.WorkspaceService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import com.isaacai.server.knowledge.extraction.DocumentTextExtractor;
+
+import com.isaacai.server.knowledge.model.KnowledgeChunk;
+import com.isaacai.server.knowledge.repository.KnowledgeChunkRepository;
+
+import java.util.ArrayList;
 
 
 import java.util.List;
@@ -18,14 +24,23 @@ public class KnowledgeDocumentService {
 
     private final KnowledgeDocumentRepository repository;
     private final WorkspaceService workspaceService;
+    private final DocumentTextExtractor textExtractor;
+    private final DocumentChunkingService chunkingService;
+    private final KnowledgeChunkRepository chunkRepository;
 
 
     public KnowledgeDocumentService(
             KnowledgeDocumentRepository repository,
-            WorkspaceService workspaceService
+            WorkspaceService workspaceService,
+            DocumentTextExtractor textExtractor,
+            DocumentChunkingService chunkingService,
+            KnowledgeChunkRepository chunkRepository
     ) {
         this.repository = repository;
         this.workspaceService = workspaceService;
+        this.textExtractor = textExtractor;
+        this.chunkingService = chunkingService;
+        this.chunkRepository = chunkRepository;
     }
 
     public KnowledgeDocument create(
@@ -70,6 +85,15 @@ public class KnowledgeDocumentService {
         );
     }
 
+    String extractedText =
+            textExtractor.extract(file);
+
+    if (extractedText == null || extractedText.isBlank()) {
+        throw new IllegalArgumentException(
+                "No readable text could be extracted from the document."
+        );
+    }
+
     Workspace workspace =
             workspaceService.findById(workspaceId);
 
@@ -89,7 +113,28 @@ public class KnowledgeDocumentService {
                     file.getContentType()
             );
 
-    return repository.save(document);
+    KnowledgeDocument savedDocument =
+            repository.save(document);
+
+    List<String> chunks =
+            chunkingService.chunk(extractedText);
+
+    List<KnowledgeChunk> knowledgeChunks =
+            new ArrayList<>();
+
+    for (int index = 0; index < chunks.size(); index++) {
+        knowledgeChunks.add(
+                new KnowledgeChunk(
+                        savedDocument,
+                        index,
+                        chunks.get(index)
+                )
+        );
+    }
+
+    chunkRepository.saveAll(knowledgeChunks);
+
+    return savedDocument;
 }
 
 
