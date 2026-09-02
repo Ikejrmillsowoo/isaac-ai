@@ -123,13 +123,15 @@ public class KnowledgeDocumentService {
             new ArrayList<>();
 
     for (int index = 0; index < chunks.size(); index++) {
-        knowledgeChunks.add(
+
+        KnowledgeChunk knowledgeChunk =
                 new KnowledgeChunk(
                         savedDocument,
                         index,
                         chunks.get(index)
-                )
-        );
+                );
+
+        knowledgeChunks.add(knowledgeChunk);
     }
 
     chunkRepository.saveAll(knowledgeChunks);

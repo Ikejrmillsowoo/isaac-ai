@@ -9,6 +9,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import com.isaacai.server.workspace.model.Workspace;
 import com.isaacai.server.workspace.repository.WorkspaceRepository;
 import com.isaacai.server.knowledge.repository.KnowledgeDocumentRepository;
+import com.isaacai.server.knowledge.repository.KnowledgeChunkRepository;
 
 
 
@@ -27,10 +28,16 @@ class WorkspaceRepositoryTest {
 @Autowired
 private KnowledgeDocumentRepository knowledgeDocumentRepository;
 
+@Autowired
+private KnowledgeChunkRepository knowledgeChunkRepository;
+
+
+
      @BeforeEach
     void cleanDatabase() {
-         knowledgeDocumentRepository.deleteAll();
-    workspaceRepository.deleteAll();
+        knowledgeChunkRepository.deleteAll();
+        knowledgeDocumentRepository.deleteAll();
+        workspaceRepository.deleteAll();
     }
 
     @Test
