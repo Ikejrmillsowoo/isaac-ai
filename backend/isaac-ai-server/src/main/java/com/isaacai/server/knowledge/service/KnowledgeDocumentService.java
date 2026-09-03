@@ -12,6 +12,11 @@ import com.isaacai.server.knowledge.extraction.DocumentTextExtractor;
 import com.isaacai.server.knowledge.model.KnowledgeChunk;
 import com.isaacai.server.knowledge.repository.KnowledgeChunkRepository;
 
+import com.isaacai.ai.embedding.EmbeddingClient;
+import com.isaacai.ai.embedding.VectorFormatter;
+
+
+
 import java.util.ArrayList;
 
 
@@ -27,6 +32,8 @@ public class KnowledgeDocumentService {
     private final DocumentTextExtractor textExtractor;
     private final DocumentChunkingService chunkingService;
     private final KnowledgeChunkRepository chunkRepository;
+    private final EmbeddingClient embeddingClient;
+    private final VectorFormatter vectorFormatter;
 
 
     public KnowledgeDocumentService(
@@ -34,13 +41,17 @@ public class KnowledgeDocumentService {
             WorkspaceService workspaceService,
             DocumentTextExtractor textExtractor,
             DocumentChunkingService chunkingService,
-            KnowledgeChunkRepository chunkRepository
+            KnowledgeChunkRepository chunkRepository,
+            EmbeddingClient embeddingClient,
+            VectorFormatter vectorFormatter
     ) {
         this.repository = repository;
         this.workspaceService = workspaceService;
         this.textExtractor = textExtractor;
         this.chunkingService = chunkingService;
         this.chunkRepository = chunkRepository;
+        this.embeddingClient = embeddingClient;
+        this.vectorFormatter = vectorFormatter;
     }
 
     public KnowledgeDocument create(
@@ -134,9 +145,33 @@ public class KnowledgeDocumentService {
         knowledgeChunks.add(knowledgeChunk);
     }
 
-    chunkRepository.saveAll(knowledgeChunks);
+    List<KnowledgeChunk> savedChunks =
+        chunkRepository.saveAll(knowledgeChunks);
 
-    return savedDocument;
+for (KnowledgeChunk chunk : savedChunks) {
+
+    float[] embedding =
+            embeddingClient.embed(
+                    chunk.getContent()
+            );
+
+    if (embedding.length != 768) {
+        throw new IllegalStateException(
+                "Expected embedding dimension 768 but received "
+                        + embedding.length
+        );
+    }
+
+    String formattedEmbedding =
+            vectorFormatter.format(embedding);
+
+    chunkRepository.updateEmbedding(
+            chunk.getId(),
+            formattedEmbedding
+    );
+}
+
+return savedDocument;
 }
 
 
