@@ -18,11 +18,11 @@ import java.util.List;
 @Service
 public class ChatService {
 
-    private static final String DEFAULT_SYSTEM_PROMPT = """
-            You are Isaac AI, a private personal assistant.
-            Be clear, practical, and accurate.
-            Do not invent facts.
-            """;
+//     private static final String DEFAULT_SYSTEM_PROMPT = """
+//             You are Isaac AI, a private personal assistant.
+//             Be clear, practical, and accurate.
+//             Do not invent facts.
+//             """;
 
     private final AiChatClient aiChatClient;
     private final ChatSessionService chatSessionService;
@@ -31,6 +31,7 @@ public class ChatService {
     private final WorkspaceService workspaceService;
     private final KnowledgeContextBuilder knowledgeContextBuilder;
     private final KnowledgeRetriever knowledgeRetriever;
+    private final ChatPromptBuilder chatPromptBuilder;
 
     public ChatService(
             AiChatClient aiChatClient,
@@ -39,7 +40,8 @@ public class ChatService {
             ConversationService conversationService,
             WorkspaceService workspaceService,
             KnowledgeContextBuilder knowledgeContextBuilder,
-            KnowledgeRetriever knowledgeRetriever
+            KnowledgeRetriever knowledgeRetriever,
+            ChatPromptBuilder chatPromptBuilder
     ) {
         this.aiChatClient = aiChatClient;
         this.chatSessionService = chatSessionService;
@@ -48,6 +50,7 @@ public class ChatService {
         this.workspaceService = workspaceService;
         this.knowledgeContextBuilder = knowledgeContextBuilder;
         this.knowledgeRetriever = knowledgeRetriever;
+        this.chatPromptBuilder = chatPromptBuilder;
     }
 
     public ChatResponse chat(ChatRequest request) {
@@ -55,12 +58,10 @@ public class ChatService {
         PreparedChat preparedChat =
                 chatSessionService.prepareConversation(request);
 
-        String systemPrompt =
-                resolveSystemPrompt(
-                        workspaceService.findById(
-                                request.workspaceId()
-                        ).getSystemPrompt()
-                );
+       String workspaceSystemPrompt =
+        workspaceService.findById(
+                request.workspaceId()
+        ).getSystemPrompt();
 
         // Retrieve relevant workspace knowledge
         List<RetrievedKnowledge> retrievedKnowledge =
@@ -77,10 +78,10 @@ public class ChatService {
 
         // Combine workspace prompt with retrieved knowledge
         String augmentedSystemPrompt =
-                buildSystemPrompt(
-                        systemPrompt,
-                        knowledgeContext
-                );
+        chatPromptBuilder.build(
+                workspaceSystemPrompt,
+                knowledgeContext
+        );
 
         String answer =
                 aiChatClient.chat(
@@ -122,52 +123,52 @@ public class ChatService {
         );
     }
 
-    private String resolveSystemPrompt(
-            String systemPrompt
-    ) {
+//     private String resolveSystemPrompt(
+//             String systemPrompt
+//     ) {
 
-        if (systemPrompt == null ||
-                systemPrompt.isBlank()) {
-            return DEFAULT_SYSTEM_PROMPT;
-        }
+//         if (systemPrompt == null ||
+//                 systemPrompt.isBlank()) {
+//             return DEFAULT_SYSTEM_PROMPT;
+//         }
 
-        return systemPrompt.trim();
-    }
+//         return systemPrompt.trim();
+//     }
 
-    private String buildSystemPrompt(
-            String systemPrompt,
-            String knowledgeContext
-    ) {
+//     private String buildSystemPrompt(
+//             String systemPrompt,
+//             String knowledgeContext
+//     ) {
 
-        if (knowledgeContext == null ||
-                knowledgeContext.isBlank()) {
-            return systemPrompt;
-        }
+//         if (knowledgeContext == null ||
+//                 knowledgeContext.isBlank()) {
+//             return systemPrompt;
+//         }
 
-        return """
-                %s
+//         return """
+//                 %s
 
-                You have access to relevant knowledge retrieved
-                from documents in this workspace.
+//                 You have access to relevant knowledge retrieved
+//                 from documents in this workspace.
 
-                Use the workspace knowledge below when it is
-                relevant to the user's question.
+//                 Use the workspace knowledge below when it is
+//                 relevant to the user's question.
 
-                Do not claim that the knowledge says something
-                that is not supported by the provided text.
+//                 Do not claim that the knowledge says something
+//                 that is not supported by the provided text.
 
-                If the provided knowledge does not contain enough
-                information to answer the question, say so rather
-                than inventing information.
+//                 If the provided knowledge does not contain enough
+//                 information to answer the question, say so rather
+//                 than inventing information.
 
-                --- WORKSPACE KNOWLEDGE ---
+//                 --- WORKSPACE KNOWLEDGE ---
 
-                %s
+//                 %s
 
-                --- END WORKSPACE KNOWLEDGE ---
-                """.formatted(
-                systemPrompt,
-                knowledgeContext
-        );
-    }
+//                 --- END WORKSPACE KNOWLEDGE ---
+//                 """.formatted(
+//                 systemPrompt,
+//                 knowledgeContext
+//         );
+//     }
 }

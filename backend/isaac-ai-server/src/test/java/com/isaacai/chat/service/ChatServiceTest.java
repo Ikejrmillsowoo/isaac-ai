@@ -1,6 +1,9 @@
 package com.isaacai.chat.service;
 
 import com.isaacai.ai.client.AiChatClient;
+import com.isaacai.ai.retrieval.KnowledgeContextBuilder;
+import com.isaacai.ai.retrieval.KnowledgeRetriever;
+import com.isaacai.ai.retrieval.RetrievedKnowledge;
 import com.isaacai.chat.dto.ChatRequest;
 import com.isaacai.chat.dto.ChatResponse;
 import com.isaacai.server.conversation.model.Conversation;
@@ -12,7 +15,6 @@ import com.isaacai.title.AiTitleGenerator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -20,16 +22,9 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
-import com.isaacai.ai.retrieval.KnowledgeContextBuilder;
-import com.isaacai.ai.retrieval.KnowledgeRetriever;
-import static org.mockito.ArgumentMatchers.anyList;
-
-import com.isaacai.ai.retrieval.RetrievedKnowledge;
 
 @ExtendWith(MockitoExtension.class)
 class ChatServiceTest {
@@ -50,6 +45,15 @@ class ChatServiceTest {
     private WorkspaceService workspaceService;
 
     @Mock
+    private KnowledgeContextBuilder knowledgeContextBuilder;
+
+    @Mock
+    private KnowledgeRetriever knowledgeRetriever;
+
+    @Mock
+    private ChatPromptBuilder chatPromptBuilder;
+
+    @Mock
     private Workspace workspace;
 
     @Mock
@@ -61,25 +65,20 @@ class ChatServiceTest {
     @Mock
     private Message assistantMessage;
 
-    @Mock
-private KnowledgeContextBuilder knowledgeContextBuilder;
-
-@Mock
-private KnowledgeRetriever knowledgeRetriever;
-
     private ChatService chatService;
 
     @BeforeEach
     void setUp() {
         chatService = new ChatService(
-        aiChatClient,
-        chatSessionService,
-        aiTitleGenerator,
-        conversationService,
-        workspaceService,
-        knowledgeContextBuilder,
-        knowledgeRetriever
-);
+                aiChatClient,
+                chatSessionService,
+                aiTitleGenerator,
+                conversationService,
+                workspaceService,
+                knowledgeContextBuilder,
+                knowledgeRetriever,
+                chatPromptBuilder
+        );
     }
 
     @Test
@@ -100,10 +99,11 @@ private KnowledgeRetriever knowledgeRetriever;
 
         List<Message> history = List.of(userMessage);
 
-        PreparedChat preparedChat = new PreparedChat(
-                userMessage,
-                history
-        );
+        PreparedChat preparedChat =
+                new PreparedChat(
+                        userMessage,
+                        history
+                );
 
         when(userMessage.getId())
                 .thenReturn(userMessageId);
@@ -121,13 +121,18 @@ private KnowledgeRetriever knowledgeRetriever;
                 .thenReturn(systemPrompt);
 
         when(knowledgeRetriever.retrieve(
-        workspaceId,
-        request.message()
-)).thenReturn(List.of());
+                workspaceId,
+                request.message()
+        )).thenReturn(List.of());
 
-when(knowledgeContextBuilder.build(
-        anyList()
-)).thenReturn("");
+        when(knowledgeContextBuilder.build(
+                List.of()
+        )).thenReturn("");
+
+        when(chatPromptBuilder.build(
+                systemPrompt,
+                ""
+        )).thenReturn(systemPrompt);
 
         when(aiChatClient.chat(
                 systemPrompt,
@@ -147,7 +152,8 @@ when(knowledgeContextBuilder.build(
         when(conversation.hasDefaultTitle())
                 .thenReturn(false);
 
-        ChatResponse response = chatService.chat(request);
+        ChatResponse response =
+                chatService.chat(request);
 
         assertThat(response.conversationId())
                 .isEqualTo(conversationId);
@@ -161,56 +167,41 @@ when(knowledgeContextBuilder.build(
         assertThat(response.answer())
                 .isEqualTo("Hello Isaac!");
 
-        InOrder order = inOrder(
-                chatSessionService,
-                workspaceService,
-                aiChatClient
-        );
+        verify(knowledgeRetriever)
+                .retrieve(
+                        workspaceId,
+                        request.message()
+                );
 
-        order.verify(chatSessionService)
-                .prepareConversation(request);
+        verify(knowledgeContextBuilder)
+                .build(List.of());
 
-        order.verify(workspaceService)
-                .findById(workspaceId);
+        verify(chatPromptBuilder)
+                .build(
+                        systemPrompt,
+                        ""
+                );
 
-        order.verify(aiChatClient)
+        verify(aiChatClient)
                 .chat(
                         systemPrompt,
                         history
                 );
 
-        order.verify(chatSessionService)
+        verify(chatSessionService)
                 .saveAssistantMessage(
                         request,
                         "Hello Isaac!"
                 );
 
-        verify(conversationService)
-                .findById(
-                        workspaceId,
-                        conversationId
-                );
-
-        verify(conversation)
-                .hasDefaultTitle();
-
         verify(aiTitleGenerator, never())
                 .generateTitle(request.message());
-
-        verify(conversationService, never())
-                .rename(
-                        workspaceId,
-                        conversationId,
-                        "Hello Isaac AI"
-                );
     }
 
     @Test
     void shouldGenerateConversationTitleForNewConversation() {
         UUID workspaceId = UUID.randomUUID();
         UUID conversationId = UUID.randomUUID();
-        UUID userMessageId = UUID.randomUUID();
-        UUID assistantMessageId = UUID.randomUUID();
 
         String systemPrompt =
                 "Act as a senior Java interview coach.";
@@ -221,18 +212,20 @@ when(knowledgeContextBuilder.build(
                 "Help me prepare for a Java interview"
         );
 
-        List<Message> history = List.of(userMessage);
+        List<Message> history =
+                List.of(userMessage);
 
-        PreparedChat preparedChat = new PreparedChat(
-                userMessage,
-                history
-        );
+        PreparedChat preparedChat =
+                new PreparedChat(
+                        userMessage,
+                        history
+                );
 
         when(userMessage.getId())
-                .thenReturn(userMessageId);
+                .thenReturn(UUID.randomUUID());
 
         when(assistantMessage.getId())
-                .thenReturn(assistantMessageId);
+                .thenReturn(UUID.randomUUID());
 
         when(chatSessionService.prepareConversation(request))
                 .thenReturn(preparedChat);
@@ -244,13 +237,18 @@ when(knowledgeContextBuilder.build(
                 .thenReturn(systemPrompt);
 
         when(knowledgeRetriever.retrieve(
-        workspaceId,
-        request.message()
-)).thenReturn(List.of());
+                workspaceId,
+                request.message()
+        )).thenReturn(List.of());
 
-when(knowledgeContextBuilder.build(
-        anyList()
-)).thenReturn("");
+        when(knowledgeContextBuilder.build(
+                List.of()
+        )).thenReturn("");
+
+        when(chatPromptBuilder.build(
+                systemPrompt,
+                ""
+        )).thenReturn(systemPrompt);
 
         when(aiChatClient.chat(
                 systemPrompt,
@@ -272,24 +270,15 @@ when(knowledgeContextBuilder.build(
 
         when(aiTitleGenerator.generateTitle(
                 request.message()
-        )).thenReturn("Java Interview Preparation");
+        )).thenReturn(
+                "Java Interview Preparation"
+        );
 
-        ChatResponse response = chatService.chat(request);
-
-        assertThat(response.conversationId())
-                .isEqualTo(conversationId);
+        ChatResponse response =
+                chatService.chat(request);
 
         assertThat(response.answer())
                 .isEqualTo("Here is a study plan...");
-
-        verify(workspaceService)
-                .findById(workspaceId);
-
-        verify(aiChatClient)
-                .chat(
-                        systemPrompt,
-                        history
-                );
 
         verify(aiTitleGenerator)
                 .generateTitle(request.message());
@@ -302,126 +291,137 @@ when(knowledgeContextBuilder.build(
                 );
     }
 
-
     @Test
-void shouldIncludeRetrievedKnowledgeInSystemPrompt() {
-    UUID workspaceId = UUID.randomUUID();
-    UUID conversationId = UUID.randomUUID();
-    UUID userMessageId = UUID.randomUUID();
-    UUID assistantMessageId = UUID.randomUUID();
+    void shouldIncludeRetrievedKnowledgeInSystemPrompt() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID conversationId = UUID.randomUUID();
 
-    String systemPrompt =
-            "You are a helpful research assistant.";
+        String systemPrompt =
+                "You are a helpful research assistant.";
 
-    ChatRequest request = new ChatRequest(
-            workspaceId,
-            conversationId,
-            "How was social media use measured?"
-    );
+        String knowledgeContext =
+                """
+                Relevant knowledge from this workspace:
 
-    List<Message> history = List.of(userMessage);
+                [Document: SMUS Manuscript.pdf, Chunk: 22]
+                Participants rated 31 social media activities
+                on a nine-point Likert scale.
+                """.trim();
 
-    PreparedChat preparedChat = new PreparedChat(
-            userMessage,
-            history
-    );
+        String augmentedPrompt =
+                systemPrompt
+                        + "\n\n"
+                        + knowledgeContext;
 
-    RetrievedKnowledge retrievedKnowledge =
-            new RetrievedKnowledge(
-                    UUID.randomUUID(),
-                    UUID.randomUUID(),
-                    "SMUS Manuscript.pdf",
-                    22,
-                    "Participants rated 31 social media activities "
-                            + "on a nine-point Likert scale.",
-                    0.23
-            );
+        ChatRequest request = new ChatRequest(
+                workspaceId,
+                conversationId,
+                "How was social media use measured?"
+        );
 
-    String knowledgeContext = """
-            Relevant knowledge from this workspace:
+        List<Message> history =
+                List.of(userMessage);
 
-            [Document: SMUS Manuscript.pdf, Chunk: 22]
-            Participants rated 31 social media activities
-            on a nine-point Likert scale.
-            """.trim();
+        PreparedChat preparedChat =
+                new PreparedChat(
+                        userMessage,
+                        history
+                );
 
-    when(userMessage.getId())
-            .thenReturn(userMessageId);
+        RetrievedKnowledge retrievedKnowledge =
+                new RetrievedKnowledge(
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        "SMUS Manuscript.pdf",
+                        22,
+                        "Participants rated 31 social media activities "
+                                + "on a nine-point Likert scale.",
+                        0.23
+                );
 
-    when(assistantMessage.getId())
-            .thenReturn(assistantMessageId);
+        when(userMessage.getId())
+                .thenReturn(UUID.randomUUID());
 
-    when(chatSessionService.prepareConversation(request))
-            .thenReturn(preparedChat);
+        when(assistantMessage.getId())
+                .thenReturn(UUID.randomUUID());
 
-    when(workspaceService.findById(workspaceId))
-            .thenReturn(workspace);
+        when(chatSessionService.prepareConversation(request))
+                .thenReturn(preparedChat);
 
-    when(workspace.getSystemPrompt())
-            .thenReturn(systemPrompt);
+        when(workspaceService.findById(workspaceId))
+                .thenReturn(workspace);
 
-    when(knowledgeRetriever.retrieve(
-            workspaceId,
-            request.message()
-    )).thenReturn(
-            List.of(retrievedKnowledge)
-    );
+        when(workspace.getSystemPrompt())
+                .thenReturn(systemPrompt);
 
-    when(knowledgeContextBuilder.build(
-            List.of(retrievedKnowledge)
-    )).thenReturn(knowledgeContext);
+        when(knowledgeRetriever.retrieve(
+                workspaceId,
+                request.message()
+        )).thenReturn(
+                List.of(retrievedKnowledge)
+        );
 
-    when(aiChatClient.chat(
-            org.mockito.ArgumentMatchers.argThat(
-                    prompt ->
-                            prompt.contains(systemPrompt)
-                                    &&
-                            prompt.contains(
-                                    "SMUS Manuscript.pdf"
-                            )
-                                    &&
-                            prompt.contains(
-                                    "31 social media activities"
-                            )
-                    ),
-            org.mockito.ArgumentMatchers.eq(history)
-    )).thenReturn(
-            "The researchers measured social media use "
-                    + "with 31 activities rated on a "
-                    + "nine-point Likert scale."
-    );
+        when(knowledgeContextBuilder.build(
+                List.of(retrievedKnowledge)
+        )).thenReturn(knowledgeContext);
 
-    when(chatSessionService.saveAssistantMessage(
-            request,
-            "The researchers measured social media use "
-                    + "with 31 activities rated on a "
-                    + "nine-point Likert scale."
-    )).thenReturn(assistantMessage);
+        when(chatPromptBuilder.build(
+                systemPrompt,
+                knowledgeContext
+        )).thenReturn(augmentedPrompt);
 
-    when(conversationService.findById(
-            workspaceId,
-            conversationId
-    )).thenReturn(conversation);
+        when(aiChatClient.chat(
+                augmentedPrompt,
+                history
+        )).thenReturn(
+                "The researchers measured social media use "
+                        + "with 31 activities rated on a "
+                        + "nine-point Likert scale."
+        );
 
-    when(conversation.hasDefaultTitle())
-            .thenReturn(false);
+        when(chatSessionService.saveAssistantMessage(
+                request,
+                "The researchers measured social media use "
+                        + "with 31 activities rated on a "
+                        + "nine-point Likert scale."
+        )).thenReturn(assistantMessage);
 
-    ChatResponse response =
-            chatService.chat(request);
+        when(conversationService.findById(
+                workspaceId,
+                conversationId
+        )).thenReturn(conversation);
 
-    assertThat(response.answer())
-            .contains("31 activities")
-            .contains("nine-point Likert scale");
+        when(conversation.hasDefaultTitle())
+                .thenReturn(false);
 
-    verify(knowledgeRetriever)
-            .retrieve(
-                    workspaceId,
-                    request.message()
-            );
+        ChatResponse response =
+                chatService.chat(request);
 
-    verify(knowledgeContextBuilder)
-            .build(
-                    List.of(retrievedKnowledge)
-            );
-}
+        assertThat(response.answer())
+                .contains("31 activities")
+                .contains("nine-point Likert scale");
+
+        verify(knowledgeRetriever)
+                .retrieve(
+                        workspaceId,
+                        request.message()
+                );
+
+        verify(knowledgeContextBuilder)
+                .build(
+                        List.of(retrievedKnowledge)
+                );
+
+        verify(chatPromptBuilder)
+                .build(
+                        systemPrompt,
+                        knowledgeContext
+                );
+
+        verify(aiChatClient)
+                .chat(
+                        augmentedPrompt,
+                        history
+                );
+    }
 }

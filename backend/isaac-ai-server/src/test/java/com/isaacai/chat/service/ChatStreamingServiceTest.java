@@ -1,6 +1,8 @@
 package com.isaacai.chat.service;
 
 import com.isaacai.ai.client.AiStreamingClient;
+import com.isaacai.ai.retrieval.KnowledgeContextBuilder;
+import com.isaacai.ai.retrieval.KnowledgeRetriever;
 import com.isaacai.chat.dto.ChatRequest;
 import com.isaacai.server.conversation.model.Conversation;
 import com.isaacai.server.conversation.service.ConversationService;
@@ -41,6 +43,15 @@ class ChatStreamingServiceTest {
     private WorkspaceService workspaceService;
 
     @Mock
+    private KnowledgeRetriever knowledgeRetriever;
+
+    @Mock
+    private KnowledgeContextBuilder knowledgeContextBuilder;
+
+    @Mock
+    private ChatPromptBuilder chatPromptBuilder;
+
+    @Mock
     private Message userMessage;
 
     @Mock
@@ -53,30 +64,38 @@ class ChatStreamingServiceTest {
 
     @BeforeEach
     void setUp() {
-        chatStreamingService = new ChatStreamingService(
-                aiStreamingClient,
-                chatSessionService,
-                aiTitleGenerator,
-                conversationService,
-                workspaceService
-        );
+
+        chatStreamingService =
+                new ChatStreamingService(
+                        aiStreamingClient,
+                        chatSessionService,
+                        aiTitleGenerator,
+                        conversationService,
+                        workspaceService,
+                        knowledgeRetriever,
+                        knowledgeContextBuilder,
+                        chatPromptBuilder
+                );
     }
 
     @Test
     void shouldStreamAndSaveAssistantMessage() {
+
         UUID workspaceId = UUID.randomUUID();
         UUID conversationId = UUID.randomUUID();
 
         String systemPrompt =
                 "Act as a helpful personal assistant.";
 
-        ChatRequest request = new ChatRequest(
-                workspaceId,
-                conversationId,
-                "Hello"
-        );
+        ChatRequest request =
+                new ChatRequest(
+                        workspaceId,
+                        conversationId,
+                        "Hello"
+                );
 
-        List<Message> history = List.of(userMessage);
+        List<Message> history =
+                List.of(userMessage);
 
         PreparedChat preparedChat =
                 new PreparedChat(
@@ -93,11 +112,28 @@ class ChatStreamingServiceTest {
         when(workspace.getSystemPrompt())
                 .thenReturn(systemPrompt);
 
+        when(knowledgeRetriever.retrieve(
+                workspaceId,
+                request.message()
+        )).thenReturn(List.of());
+
+        when(knowledgeContextBuilder.build(
+                List.of()
+        )).thenReturn("");
+
+        when(chatPromptBuilder.build(
+                systemPrompt,
+                ""
+        )).thenReturn(systemPrompt);
+
         when(aiStreamingClient.stream(
                 systemPrompt,
                 history
         )).thenReturn(
-                Flux.just("Hello", " Isaac")
+                Flux.just(
+                        "Hello",
+                        " Isaac"
+                )
         );
 
         when(conversationService.findById(
@@ -126,6 +162,21 @@ class ChatStreamingServiceTest {
 
         verify(workspace)
                 .getSystemPrompt();
+
+        verify(knowledgeRetriever)
+                .retrieve(
+                        workspaceId,
+                        request.message()
+                );
+
+        verify(knowledgeContextBuilder)
+                .build(List.of());
+
+        verify(chatPromptBuilder)
+                .build(
+                        systemPrompt,
+                        ""
+                );
 
         verify(aiStreamingClient)
                 .stream(
