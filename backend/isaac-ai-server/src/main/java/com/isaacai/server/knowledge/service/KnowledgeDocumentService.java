@@ -174,5 +174,35 @@ for (KnowledgeChunk chunk : savedChunks) {
 return savedDocument;
 }
 
+public void delete(
+        UUID workspaceId,
+        UUID documentId
+) {
+    workspaceService.findById(workspaceId);
+
+    KnowledgeDocument document =
+            repository.findById(documentId)
+                    .orElseThrow(() ->
+                            new IllegalArgumentException(
+                                    "Knowledge document not found."
+                            )
+                    );
+
+    if (!document.getWorkspace()
+            .getId()
+            .equals(workspaceId)) {
+
+        throw new IllegalArgumentException(
+                "Knowledge document does not belong to this workspace."
+        );
+    }
+
+    chunkRepository.deleteAllByDocumentId(
+            documentId
+    );
+
+    repository.delete(document);
+}
+
 
 }
