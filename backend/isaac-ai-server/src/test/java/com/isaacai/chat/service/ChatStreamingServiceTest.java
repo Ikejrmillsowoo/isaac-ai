@@ -123,6 +123,7 @@ class ChatStreamingServiceTest {
 
         when(chatPromptBuilder.build(
                 systemPrompt,
+                "",
                 ""
         )).thenReturn(systemPrompt);
 
@@ -175,6 +176,7 @@ class ChatStreamingServiceTest {
         verify(chatPromptBuilder)
                 .build(
                         systemPrompt,
+                        "",
                         ""
                 );
 

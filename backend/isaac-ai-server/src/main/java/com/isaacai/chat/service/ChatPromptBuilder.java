@@ -13,50 +13,87 @@ public class ChatPromptBuilder {
 
     public String build(
             String systemPrompt,
-            String knowledgeContext
+            String knowledgeContext,
+            String memoryContext
     ) {
-
         String resolvedSystemPrompt =
                 resolveSystemPrompt(systemPrompt);
 
-        if (knowledgeContext == null ||
-                knowledgeContext.isBlank()) {
-            return resolvedSystemPrompt;
+        StringBuilder prompt =
+                new StringBuilder(
+                        resolvedSystemPrompt
+                );
+
+        if (memoryContext != null &&
+                !memoryContext.isBlank()) {
+
+            prompt.append("""
+
+                    
+                    You have access to relevant memories
+                    about the user.
+
+                    Use these memories when they are relevant
+                    to the user's request.
+
+                    Do not mention that you are using stored
+                    memories unless it is relevant to the
+                    conversation.
+
+                    --- USER MEMORIES ---
+
+                    """);
+
+            prompt.append(memoryContext);
+
+            prompt.append("""
+
+                    
+                    --- END USER MEMORIES ---
+                    """);
         }
 
-        return """
-                %s
+        if (knowledgeContext != null &&
+                !knowledgeContext.isBlank()) {
 
-                You have access to relevant knowledge retrieved
-                from documents in this workspace.
+            prompt.append("""
 
-                Use the workspace knowledge below when it is
-                relevant to the user's question.
+                    
+                    You have access to relevant knowledge retrieved
+                    from documents in this workspace.
 
-                Do not claim that the knowledge says something
-                that is not supported by the provided text.
+                    Use the workspace knowledge below when it is
+                    relevant to the user's question.
 
-                If the provided knowledge does not contain enough
-                information to answer the question, say so rather
-                than inventing information.
+                    Do not claim that the knowledge says something
+                    that is not supported by the provided text.
 
-                --- WORKSPACE KNOWLEDGE ---
+                    If the provided knowledge does not contain enough
+                    information to answer the question, say so rather
+                    than inventing information.
 
-                %s
+                    --- WORKSPACE KNOWLEDGE ---
 
-                --- END WORKSPACE KNOWLEDGE ---
-                """.formatted(
-                resolvedSystemPrompt,
-                knowledgeContext
-        );
+                    """);
+
+            prompt.append(knowledgeContext);
+
+            prompt.append("""
+
+                    
+                    --- END WORKSPACE KNOWLEDGE ---
+                    """);
+        }
+
+        return prompt.toString().trim();
     }
 
     private String resolveSystemPrompt(
             String systemPrompt
     ) {
-
         if (systemPrompt == null ||
                 systemPrompt.isBlank()) {
+
             return DEFAULT_SYSTEM_PROMPT;
         }
 

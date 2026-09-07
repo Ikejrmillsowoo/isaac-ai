@@ -79,7 +79,8 @@ public class ChatStreamingService {
        String augmentedSystemPrompt =
         chatPromptBuilder.build(
                 workspaceSystemPrompt,
-                knowledgeContext
+                knowledgeContext,
+                ""
         );
 
         StringBuilder assistantResponse =

@@ -80,7 +80,8 @@ public class ChatService {
         String augmentedSystemPrompt =
         chatPromptBuilder.build(
                 workspaceSystemPrompt,
-                knowledgeContext
+                knowledgeContext,
+                ""
         );
 
         String answer =
@@ -123,52 +124,4 @@ public class ChatService {
         );
     }
 
-//     private String resolveSystemPrompt(
-//             String systemPrompt
-//     ) {
-
-//         if (systemPrompt == null ||
-//                 systemPrompt.isBlank()) {
-//             return DEFAULT_SYSTEM_PROMPT;
-//         }
-
-//         return systemPrompt.trim();
-//     }
-
-//     private String buildSystemPrompt(
-//             String systemPrompt,
-//             String knowledgeContext
-//     ) {
-
-//         if (knowledgeContext == null ||
-//                 knowledgeContext.isBlank()) {
-//             return systemPrompt;
-//         }
-
-//         return """
-//                 %s
-
-//                 You have access to relevant knowledge retrieved
-//                 from documents in this workspace.
-
-//                 Use the workspace knowledge below when it is
-//                 relevant to the user's question.
-
-//                 Do not claim that the knowledge says something
-//                 that is not supported by the provided text.
-
-//                 If the provided knowledge does not contain enough
-//                 information to answer the question, say so rather
-//                 than inventing information.
-
-//                 --- WORKSPACE KNOWLEDGE ---
-
-//                 %s
-
-//                 --- END WORKSPACE KNOWLEDGE ---
-//                 """.formatted(
-//                 systemPrompt,
-//                 knowledgeContext
-//         );
-//     }
 }

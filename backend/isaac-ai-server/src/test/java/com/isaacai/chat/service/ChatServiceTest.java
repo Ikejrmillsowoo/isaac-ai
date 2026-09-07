@@ -131,6 +131,7 @@ class ChatServiceTest {
 
         when(chatPromptBuilder.build(
                 systemPrompt,
+                "",
                 ""
         )).thenReturn(systemPrompt);
 
@@ -179,6 +180,7 @@ class ChatServiceTest {
         verify(chatPromptBuilder)
                 .build(
                         systemPrompt,
+                        "",
                         ""
                 );
 
@@ -247,6 +249,7 @@ class ChatServiceTest {
 
         when(chatPromptBuilder.build(
                 systemPrompt,
+                "",
                 ""
         )).thenReturn(systemPrompt);
 
@@ -367,7 +370,8 @@ class ChatServiceTest {
 
         when(chatPromptBuilder.build(
                 systemPrompt,
-                knowledgeContext
+                knowledgeContext,
+                ""
         )).thenReturn(augmentedPrompt);
 
         when(aiChatClient.chat(
@@ -415,7 +419,8 @@ class ChatServiceTest {
         verify(chatPromptBuilder)
                 .build(
                         systemPrompt,
-                        knowledgeContext
+                        knowledgeContext,
+                        ""
                 );
 
         verify(aiChatClient)
