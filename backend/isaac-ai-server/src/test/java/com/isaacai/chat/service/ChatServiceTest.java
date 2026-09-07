@@ -17,6 +17,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import com.isaacai.ai.memory.MemoryContextBuilder;
+import com.isaacai.server.memory.service.MemoryService;
+import com.isaacai.server.memory.model.Memory;
+
+
+
 
 import java.util.List;
 import java.util.UUID;
@@ -65,6 +71,15 @@ class ChatServiceTest {
     @Mock
     private Message assistantMessage;
 
+    @Mock
+private MemoryService memoryService;
+
+@Mock
+private MemoryContextBuilder memoryContextBuilder;
+
+@Mock
+private Memory memory;
+
     private ChatService chatService;
 
     @BeforeEach
@@ -77,7 +92,9 @@ class ChatServiceTest {
                 workspaceService,
                 knowledgeContextBuilder,
                 knowledgeRetriever,
-                chatPromptBuilder
+                chatPromptBuilder,
+                memoryContextBuilder,
+                memoryService
         );
     }
 
@@ -152,6 +169,13 @@ class ChatServiceTest {
 
         when(conversation.hasDefaultTitle())
                 .thenReturn(false);
+
+        when(memoryService.findAll(workspaceId))
+        .thenReturn(List.of());
+
+when(memoryContextBuilder.build(
+        List.of()
+)).thenReturn("");
 
         ChatResponse response =
                 chatService.chat(request);
@@ -429,4 +453,133 @@ class ChatServiceTest {
                         history
                 );
     }
+
+    @Test
+void shouldIncludeWorkspaceMemoryInSystemPrompt() {
+
+    UUID workspaceId = UUID.randomUUID();
+    UUID conversationId = UUID.randomUUID();
+
+    String systemPrompt =
+            "You are a helpful personal assistant.";
+
+    String memoryContext =
+            """
+            Relevant memories about the user:
+
+            [PREFERENCE] User prefers Java examples over Python.
+            """.trim();
+
+    String augmentedPrompt =
+            systemPrompt
+                    + "\n\n"
+                    + memoryContext;
+
+    ChatRequest request = new ChatRequest(
+            workspaceId,
+            conversationId,
+            "Show me how to check if a number is even."
+    );
+
+    List<Message> history =
+            List.of(userMessage);
+
+    PreparedChat preparedChat =
+            new PreparedChat(
+                    userMessage,
+                    history
+            );
+
+    when(userMessage.getId())
+            .thenReturn(UUID.randomUUID());
+
+    when(assistantMessage.getId())
+            .thenReturn(UUID.randomUUID());
+
+    when(chatSessionService.prepareConversation(request))
+            .thenReturn(preparedChat);
+
+    when(workspaceService.findById(workspaceId))
+            .thenReturn(workspace);
+
+    when(workspace.getSystemPrompt())
+            .thenReturn(systemPrompt);
+
+    // This test is about memory, not knowledge.
+    when(knowledgeRetriever.retrieve(
+            workspaceId,
+            request.message()
+    )).thenReturn(List.of());
+
+    when(knowledgeContextBuilder.build(
+            List.of()
+    )).thenReturn("");
+
+    // Pretend this workspace has one stored memory.
+    when(memoryService.findAll(workspaceId))
+            .thenReturn(List.of(memory));
+
+    // Pretend MemoryContextBuilder converts that memory
+    // into the text that will be added to the prompt.
+    when(memoryContextBuilder.build(
+            List.of(memory)
+    )).thenReturn(memoryContext);
+
+    // ChatPromptBuilder receives the memory context.
+    when(chatPromptBuilder.build(
+            systemPrompt,
+            "",
+            memoryContext
+    )).thenReturn(augmentedPrompt);
+
+    // We are mocking the AI here.
+    when(aiChatClient.chat(
+            augmentedPrompt,
+            history
+    )).thenReturn(
+            "Here is a Java example for checking "
+                    + "whether a number is even."
+    );
+
+    when(chatSessionService.saveAssistantMessage(
+            request,
+            "Here is a Java example for checking "
+                    + "whether a number is even."
+    )).thenReturn(assistantMessage);
+
+    when(conversationService.findById(
+            workspaceId,
+            conversationId
+    )).thenReturn(conversation);
+
+    when(conversation.hasDefaultTitle())
+            .thenReturn(false);
+
+    ChatResponse response =
+            chatService.chat(request);
+
+    assertThat(response.answer())
+            .contains("Java");
+
+    verify(memoryService)
+            .findAll(workspaceId);
+
+    verify(memoryContextBuilder)
+            .build(
+                    List.of(memory)
+            );
+
+    verify(chatPromptBuilder)
+            .build(
+                    systemPrompt,
+                    "",
+                    memoryContext
+            );
+
+    verify(aiChatClient)
+            .chat(
+                    augmentedPrompt,
+                    history
+            );
+}
 }

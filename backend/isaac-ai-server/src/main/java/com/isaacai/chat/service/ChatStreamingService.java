@@ -12,6 +12,10 @@ import com.isaacai.title.AiTitleGenerator;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
+import com.isaacai.ai.memory.MemoryContextBuilder;
+import com.isaacai.server.memory.model.Memory;
+import com.isaacai.server.memory.service.MemoryService;
+
 import java.util.List;
 
 @Service
@@ -31,6 +35,8 @@ public class ChatStreamingService {
     private final KnowledgeRetriever knowledgeRetriever;
     private final KnowledgeContextBuilder knowledgeContextBuilder;
     private final ChatPromptBuilder chatPromptBuilder;
+        private final MemoryService memoryService;
+        private final MemoryContextBuilder memoryContextBuilder;
 
     public ChatStreamingService(
             AiStreamingClient aiStreamingClient,
@@ -40,7 +46,9 @@ public class ChatStreamingService {
             WorkspaceService workspaceService,
             KnowledgeRetriever knowledgeRetriever,
             KnowledgeContextBuilder knowledgeContextBuilder,
-            ChatPromptBuilder chatPromptBuilder
+            ChatPromptBuilder chatPromptBuilder,
+            MemoryService memoryService,
+            MemoryContextBuilder memoryContextBuilder
     ) {
         this.aiStreamingClient = aiStreamingClient;
         this.chatSessionService = chatSessionService;
@@ -50,6 +58,8 @@ public class ChatStreamingService {
         this.knowledgeRetriever = knowledgeRetriever;
         this.knowledgeContextBuilder = knowledgeContextBuilder;
         this.chatPromptBuilder = chatPromptBuilder;
+        this.memoryService = memoryService;
+        this.memoryContextBuilder = memoryContextBuilder;
     }
 
     public Flux<String> stream(ChatRequest request) {
@@ -75,12 +85,24 @@ public class ChatStreamingService {
                         retrievedKnowledge
                 );
 
+
+        // Retrieve memory context
+        List<Memory> memories =
+        memoryService.findAll(
+                request.workspaceId()
+        );
+
+String memoryContext =
+        memoryContextBuilder.build(
+                memories
+        );
+
         // Combine the workspace prompt and knowledge
        String augmentedSystemPrompt =
         chatPromptBuilder.build(
                 workspaceSystemPrompt,
                 knowledgeContext,
-                ""
+                memoryContext
         );
 
         StringBuilder assistantResponse =
@@ -129,52 +151,5 @@ public class ChatStreamingService {
                 });
     }
 
-//     private String resolveSystemPrompt(
-//             String systemPrompt
-//     ) {
 
-//         if (systemPrompt == null ||
-//                 systemPrompt.isBlank()) {
-//             return DEFAULT_SYSTEM_PROMPT;
-//         }
-
-//         return systemPrompt.trim();
-//     }
-
-//     private String buildSystemPrompt(
-//             String systemPrompt,
-//             String knowledgeContext
-//     ) {
-
-//         if (knowledgeContext == null ||
-//                 knowledgeContext.isBlank()) {
-//             return systemPrompt;
-//         }
-
-//         return """
-//                 %s
-
-//                 You have access to relevant knowledge retrieved
-//                 from documents in this workspace.
-
-//                 Use the workspace knowledge below when it is
-//                 relevant to the user's question.
-
-//                 Do not claim that the knowledge says something
-//                 that is not supported by the provided text.
-
-//                 If the provided knowledge does not contain enough
-//                 information to answer the question, say so rather
-//                 than inventing information.
-
-//                 --- WORKSPACE KNOWLEDGE ---
-
-//                 %s
-
-//                 --- END WORKSPACE KNOWLEDGE ---
-//                 """.formatted(
-//                 systemPrompt,
-//                 knowledgeContext
-//         );
-//     }
 }

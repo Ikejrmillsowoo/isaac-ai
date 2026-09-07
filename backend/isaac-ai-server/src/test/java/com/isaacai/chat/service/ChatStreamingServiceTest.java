@@ -18,6 +18,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
+import com.isaacai.server.memory.service.MemoryService;
+import com.isaacai.ai.memory.MemoryContextBuilder;
+
 import java.util.List;
 import java.util.UUID;
 
@@ -60,6 +63,12 @@ class ChatStreamingServiceTest {
     @Mock
     private Workspace workspace;
 
+    @Mock
+    private MemoryService memoryService;
+
+    @Mock
+    private MemoryContextBuilder memoryContextBuilder;
+
     private ChatStreamingService chatStreamingService;
 
     @BeforeEach
@@ -74,7 +83,9 @@ class ChatStreamingServiceTest {
                         workspaceService,
                         knowledgeRetriever,
                         knowledgeContextBuilder,
-                        chatPromptBuilder
+                        chatPromptBuilder,
+                        memoryService,
+                        memoryContextBuilder
                 );
     }
 
@@ -126,6 +137,13 @@ class ChatStreamingServiceTest {
                 "",
                 ""
         )).thenReturn(systemPrompt);
+
+        when(memoryService.findAll(workspaceId))
+        .thenReturn(List.of());
+
+when(memoryContextBuilder.build(
+        List.of()
+)).thenReturn("");
 
         when(aiStreamingClient.stream(
                 systemPrompt,

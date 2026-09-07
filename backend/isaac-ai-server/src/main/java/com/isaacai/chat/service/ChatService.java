@@ -13,6 +13,10 @@ import com.isaacai.server.workspace.service.WorkspaceService;
 import com.isaacai.title.AiTitleGenerator;
 import org.springframework.stereotype.Service;
 
+import com.isaacai.ai.memory.MemoryContextBuilder;
+import com.isaacai.server.memory.model.Memory;
+import com.isaacai.server.memory.service.MemoryService;
+
 import java.util.List;
 
 @Service
@@ -32,6 +36,8 @@ public class ChatService {
     private final KnowledgeContextBuilder knowledgeContextBuilder;
     private final KnowledgeRetriever knowledgeRetriever;
     private final ChatPromptBuilder chatPromptBuilder;
+    private final MemoryContextBuilder memoryContextBuilder;
+    private final MemoryService memoryService;
 
     public ChatService(
             AiChatClient aiChatClient,
@@ -41,7 +47,10 @@ public class ChatService {
             WorkspaceService workspaceService,
             KnowledgeContextBuilder knowledgeContextBuilder,
             KnowledgeRetriever knowledgeRetriever,
-            ChatPromptBuilder chatPromptBuilder
+            ChatPromptBuilder chatPromptBuilder,
+            MemoryContextBuilder memoryContextBuilder,
+            MemoryService memoryService
+            
     ) {
         this.aiChatClient = aiChatClient;
         this.chatSessionService = chatSessionService;
@@ -51,6 +60,8 @@ public class ChatService {
         this.knowledgeContextBuilder = knowledgeContextBuilder;
         this.knowledgeRetriever = knowledgeRetriever;
         this.chatPromptBuilder = chatPromptBuilder;
+        this.memoryContextBuilder = memoryContextBuilder;
+        this.memoryService = memoryService;
     }
 
     public ChatResponse chat(ChatRequest request) {
@@ -76,12 +87,27 @@ public class ChatService {
                         retrievedKnowledge
                 );
 
+        // Build memory context
+        List<Memory> memories =
+                memoryService.findAll(
+                        request.workspaceId()
+                );
+
+        String memoryContext =
+                memoryContextBuilder.build(
+                        memories
+                );
+
+        if (memoryContext == null) {
+    memoryContext = "";
+}
+
         // Combine workspace prompt with retrieved knowledge
         String augmentedSystemPrompt =
         chatPromptBuilder.build(
                 workspaceSystemPrompt,
                 knowledgeContext,
-                ""
+                memoryContext
         );
 
         String answer =
