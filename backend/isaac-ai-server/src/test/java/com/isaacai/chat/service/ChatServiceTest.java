@@ -20,6 +20,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.isaacai.ai.memory.MemoryContextBuilder;
 import com.isaacai.server.memory.service.MemoryService;
 import com.isaacai.server.memory.model.Memory;
+import com.isaacai.ai.memory.MemoryCommandDetector;
+import com.isaacai.server.memory.model.MemoryCategory;
 
 
 
@@ -80,6 +82,14 @@ private MemoryContextBuilder memoryContextBuilder;
 @Mock
 private Memory memory;
 
+@Mock
+private MemoryCommandDetector memoryCommandDetector;
+
+@Mock
+private MemoryCategory memoryCategory;
+
+
+
     private ChatService chatService;
 
     @BeforeEach
@@ -94,7 +104,8 @@ private Memory memory;
                 knowledgeRetriever,
                 chatPromptBuilder,
                 memoryContextBuilder,
-                memoryService
+                memoryService,
+                memoryCommandDetector
         );
     }
 
@@ -581,5 +592,112 @@ void shouldIncludeWorkspaceMemoryInSystemPrompt() {
                     augmentedPrompt,
                     history
             );
+}
+
+@Test
+void shouldSaveExplicitRememberCommand() {
+
+    UUID workspaceId = UUID.randomUUID();
+    UUID conversationId = UUID.randomUUID();
+
+    String systemPrompt =
+            "You are a helpful personal assistant.";
+
+    ChatRequest request = new ChatRequest(
+            workspaceId,
+            conversationId,
+            "Remember that my favorite programming language is Java."
+    );
+
+    List<Message> history =
+            List.of(userMessage);
+
+    PreparedChat preparedChat =
+            new PreparedChat(
+                    userMessage,
+                    history
+            );
+
+    when(userMessage.getId())
+            .thenReturn(UUID.randomUUID());
+
+    when(assistantMessage.getId())
+            .thenReturn(UUID.randomUUID());
+
+    when(memoryCommandDetector.isRememberCommand(
+            request.message()
+    )).thenReturn(true);
+
+    when(memoryCommandDetector.extractRememberContent(
+            request.message()
+    )).thenReturn(
+            "my favorite programming language is Java."
+    );
+
+    when(chatSessionService.prepareConversation(request))
+            .thenReturn(preparedChat);
+
+    when(workspaceService.findById(workspaceId))
+            .thenReturn(workspace);
+
+    when(workspace.getSystemPrompt())
+            .thenReturn(systemPrompt);
+
+    when(knowledgeRetriever.retrieve(
+            workspaceId,
+            request.message()
+    )).thenReturn(List.of());
+
+    when(knowledgeContextBuilder.build(
+            List.of()
+    )).thenReturn("");
+
+    when(memoryService.findAll(workspaceId))
+            .thenReturn(List.of());
+
+    when(memoryContextBuilder.build(
+            List.of()
+    )).thenReturn("");
+
+    when(chatPromptBuilder.build(
+            systemPrompt,
+            "",
+            ""
+    )).thenReturn(systemPrompt);
+
+    when(aiChatClient.chat(
+            systemPrompt,
+            history
+    )).thenReturn(
+            "Got it. I'll remember that."
+    );
+
+    when(chatSessionService.saveAssistantMessage(
+            request,
+            "Got it. I'll remember that."
+    )).thenReturn(assistantMessage);
+
+    when(conversationService.findById(
+            workspaceId,
+            conversationId
+    )).thenReturn(conversation);
+
+    when(conversation.hasDefaultTitle())
+            .thenReturn(false);
+
+    ChatResponse response =
+            chatService.chat(request);
+
+    assertThat(response.answer())
+            .isEqualTo(
+                    "Got it. I'll remember that."
+            );
+
+    verify(memoryService).create(
+            workspaceId,
+            "my favorite programming language is Java.",
+            MemoryCategory.CONTEXT,
+            conversationId
+    );
 }
 }

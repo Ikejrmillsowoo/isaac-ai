@@ -17,6 +17,9 @@ import com.isaacai.ai.memory.MemoryContextBuilder;
 import com.isaacai.server.memory.model.Memory;
 import com.isaacai.server.memory.service.MemoryService;
 
+import com.isaacai.ai.memory.MemoryCommandDetector;
+import com.isaacai.server.memory.model.MemoryCategory;
+
 import java.util.List;
 
 @Service
@@ -38,6 +41,7 @@ public class ChatService {
     private final ChatPromptBuilder chatPromptBuilder;
     private final MemoryContextBuilder memoryContextBuilder;
     private final MemoryService memoryService;
+    private final MemoryCommandDetector memoryCommandDetector;
 
     public ChatService(
             AiChatClient aiChatClient,
@@ -49,8 +53,9 @@ public class ChatService {
             KnowledgeRetriever knowledgeRetriever,
             ChatPromptBuilder chatPromptBuilder,
             MemoryContextBuilder memoryContextBuilder,
-            MemoryService memoryService
-            
+            MemoryService memoryService,
+            MemoryCommandDetector memoryCommandDetector
+
     ) {
         this.aiChatClient = aiChatClient;
         this.chatSessionService = chatSessionService;
@@ -62,6 +67,9 @@ public class ChatService {
         this.chatPromptBuilder = chatPromptBuilder;
         this.memoryContextBuilder = memoryContextBuilder;
         this.memoryService = memoryService;
+        this.memoryCommandDetector = memoryCommandDetector;
+        
+
     }
 
     public ChatResponse chat(ChatRequest request) {
@@ -100,6 +108,23 @@ public class ChatService {
 
         if (memoryContext == null) {
     memoryContext = "";
+}
+
+if (memoryCommandDetector.isRememberCommand(
+        request.message()
+)) {
+
+    String memoryContent =
+            memoryCommandDetector.extractRememberContent(
+                    request.message()
+            );
+
+    memoryService.create(
+            request.workspaceId(),
+            memoryContent,
+            MemoryCategory.CONTEXT,
+            request.conversationId()
+    );
 }
 
         // Combine workspace prompt with retrieved knowledge
