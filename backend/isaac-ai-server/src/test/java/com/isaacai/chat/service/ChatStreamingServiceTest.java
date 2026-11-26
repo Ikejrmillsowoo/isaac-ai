@@ -148,7 +148,7 @@ class ChatStreamingServiceTest {
         when(memoryService.findAll(workspaceId))
                 .thenReturn(List.of());
 
-        when(memoryContextBuilder.build(List.of()))
+        when(memoryContextBuilder.build(List.of(), request.message()))
                 .thenReturn("");
 
         when(chatPromptBuilder.build(
@@ -201,7 +201,7 @@ class ChatStreamingServiceTest {
                 .findAll(workspaceId);
 
         verify(memoryContextBuilder)
-                .build(List.of());
+                .build(List.of(), request.message());
 
         verify(chatPromptBuilder)
                 .build(
