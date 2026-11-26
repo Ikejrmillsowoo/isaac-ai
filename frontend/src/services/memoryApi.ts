@@ -43,3 +43,13 @@ export async function deleteMemory(workspaceId: string, memoryId: string): Promi
   const response = await fetch(`${memoryUrl(workspaceId)}/${encodeURIComponent(memoryId)}`, { method: "DELETE" });
   await check(response);
 }
+
+export async function updateMemory(workspaceId: string, memoryId: string, content: string, category: MemoryCategory): Promise<WorkspaceMemory> {
+  const response = await fetch(`${memoryUrl(workspaceId)}/${encodeURIComponent(memoryId)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content, category }),
+  });
+  await check(response);
+  return response.json();
+}
