@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  createMemory, deleteMemory, fetchMemories, memoryCategories,
+  createMemory, deleteMemory, fetchMemories, memoryCategories, updateMemory,
 } from "../../services/memoryApi";
 import type { MemoryCategory, WorkspaceMemory } from "../../services/memoryApi";
 import type { FormEvent } from "react";
@@ -13,6 +13,7 @@ interface Props {
 
 export default function MemoryPanel({ workspaceId, chatBusy }: Props) {
   const [memories, setMemories] = useState<WorkspaceMemory[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [content, setContent] = useState("");
   const [category, setCategory] = useState<MemoryCategory>("CONTEXT");
   const [filter, setFilter] = useState("ALL");
@@ -49,9 +50,12 @@ export default function MemoryPanel({ workspaceId, chatBusy }: Props) {
     setBusy(true);
     setError("");
     try {
-      const saved = await createMemory(workspaceId, content.trim(), category);
+      const saved = editingId
+        ? await updateMemory(workspaceId, editingId, content.trim(), category)
+        : await createMemory(workspaceId, content.trim(), category);
       setMemories((current) => [saved, ...current.filter((m) => m.id !== saved.id)]);
       setContent("");
+      setEditingId(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to save memory.");
     } finally {
@@ -84,7 +88,7 @@ export default function MemoryPanel({ workspaceId, chatBusy }: Props) {
       <p className="memory-hint">Saved information for this workspace.</p>
       <form onSubmit={add}>
         <label>
-          New memory
+          {editingId ? "Edit memory" : "New memory"}
           <textarea value={content} onChange={(e) => setContent(e.target.value)} required rows={3} />
         </label>
         <label>
@@ -93,7 +97,8 @@ export default function MemoryPanel({ workspaceId, chatBusy }: Props) {
             {memoryCategories.map((item) => <option key={item}>{item}</option>)}
           </select>
         </label>
-        <button disabled={busy || chatBusy || !content.trim()} type="submit">Save memory</button>
+        <button disabled={busy || chatBusy || !content.trim()} type="submit">{editingId ? "Save changes" : "Save memory"}</button>
+        {editingId && <button type="button" disabled={busy} onClick={() => { setEditingId(null); setContent(""); }}>Cancel edit</button>}
       </form>
       <label>
         Search memories
@@ -115,7 +120,8 @@ export default function MemoryPanel({ workspaceId, chatBusy }: Props) {
               <li key={memory.id}>
                 <small>{memory.category}</small>
                 <p>{memory.content}</p>
-                <button type="button" disabled={busy || chatBusy} onClick={() => void remove(memory)}>Delete</button>
+                <button type="button" disabled={busy || chatBusy} onClick={() => { setEditingId(memory.id); setContent(memory.content); setCategory(memory.category); }}>Edit</button>
+                <button type="button" disabled={busy || chatBusy || editingId === memory.id} onClick={() => void remove(memory)}>Delete</button>
               </li>
             ))}
           </ul>
