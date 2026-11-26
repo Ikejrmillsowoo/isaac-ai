@@ -1,31 +1,28 @@
+
 package com.isaacai.chat.service;
 
 import com.isaacai.ai.client.AiStreamingClient;
+import com.isaacai.ai.memory.MemoryCommandHandler;
+import com.isaacai.ai.memory.MemoryContextBuilder;
 import com.isaacai.ai.retrieval.KnowledgeContextBuilder;
 import com.isaacai.ai.retrieval.KnowledgeRetriever;
 import com.isaacai.ai.retrieval.RetrievedKnowledge;
 import com.isaacai.chat.dto.ChatRequest;
 import com.isaacai.server.conversation.model.Conversation;
 import com.isaacai.server.conversation.service.ConversationService;
-import com.isaacai.server.workspace.service.WorkspaceService;
-import com.isaacai.title.AiTitleGenerator;
-import org.springframework.stereotype.Service;
-import reactor.core.publisher.Flux;
-import com.isaacai.ai.memory.MemoryCommandDetector;
-
-import com.isaacai.ai.memory.MemoryContextBuilder;
 import com.isaacai.server.memory.model.Memory;
 import com.isaacai.server.memory.service.MemoryService;
-import com.isaacai.server.memory.model.MemoryCategory;
+import com.isaacai.server.workspace.service.WorkspaceService;
+import com.isaacai.title.AiTitleGenerator;
 
-
-
+import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class ChatStreamingService {
-
 
     private final AiStreamingClient aiStreamingClient;
     private final ChatSessionService chatSessionService;
@@ -37,10 +34,7 @@ public class ChatStreamingService {
     private final ChatPromptBuilder chatPromptBuilder;
     private final MemoryService memoryService;
     private final MemoryContextBuilder memoryContextBuilder;
-    private final MemoryCommandDetector memoryCommandDetector;
-  
-  
-
+    private final MemoryCommandHandler memoryCommandHandler;
 
     public ChatStreamingService(
             AiStreamingClient aiStreamingClient,
@@ -53,8 +47,7 @@ public class ChatStreamingService {
             ChatPromptBuilder chatPromptBuilder,
             MemoryService memoryService,
             MemoryContextBuilder memoryContextBuilder,
-            MemoryCommandDetector memoryCommandDetector
-            
+            MemoryCommandHandler memoryCommandHandler
     ) {
         this.aiStreamingClient = aiStreamingClient;
         this.chatSessionService = chatSessionService;
@@ -66,8 +59,7 @@ public class ChatStreamingService {
         this.chatPromptBuilder = chatPromptBuilder;
         this.memoryService = memoryService;
         this.memoryContextBuilder = memoryContextBuilder;
-        this.memoryCommandDetector = memoryCommandDetector;
-       
+        this.memoryCommandHandler = memoryCommandHandler;
     }
 
     public Flux<String> stream(ChatRequest request) {
@@ -75,120 +67,114 @@ public class ChatStreamingService {
         PreparedChat preparedChat =
                 chatSessionService.prepareConversation(request);
 
-       String workspaceSystemPrompt =
-        workspaceService.findById(
-                request.workspaceId()
-        ).getSystemPrompt();
+        Optional<String> memoryResponse =
+                memoryCommandHandler.handle(request);
 
-        // Retrieve relevant knowledge for this workspace
+        Flux<String> responseStream;
+
+        if (memoryResponse.isPresent()) {
+
+            responseStream = Flux.just(memoryResponse.get());
+
+        } else {
+
+            responseStream = generateAiStream(
+                    request,
+                    preparedChat
+            );
+        }
+
+        StringBuilder assistantResponse =
+                new StringBuilder();
+
+        return responseStream
+                .doOnNext(assistantResponse::append)
+                .doOnComplete(() ->
+                        completeConversation(
+                                request,
+                                assistantResponse.toString()
+                        )
+                );
+    }
+
+    private Flux<String> generateAiStream(
+            ChatRequest request,
+            PreparedChat preparedChat
+    ) {
+
+        String workspaceSystemPrompt =
+                workspaceService.findById(
+                        request.workspaceId()
+                ).getSystemPrompt();
+
         List<RetrievedKnowledge> retrievedKnowledge =
                 knowledgeRetriever.retrieve(
                         request.workspaceId(),
                         request.message()
                 );
 
-        // Convert retrieved chunks into context
         String knowledgeContext =
                 knowledgeContextBuilder.build(
                         retrievedKnowledge
                 );
 
-
-        if (memoryCommandDetector.isRememberCommand(
-        request.message()
-)) {
-
-    String memoryContent =
-            memoryCommandDetector.extractRememberContent(
-                    request.message()
-            );
-
-    memoryService.create(
-            request.workspaceId(),
-            memoryContent,
-            MemoryCategory.CONTEXT,
-            request.conversationId()
-    );
-}
-
-if (memoryCommandDetector.isForgetCommand(
-        request.message()
-)) {
-
-    String memoryContent =
-            memoryCommandDetector.extractForgetContent(
-                    request.message()
-            );
-
-    memoryService.forget(
-            request.workspaceId(),
-            memoryContent
-    );
-}
-        // Retrieve memory context
         List<Memory> memories =
-        memoryService.findAll(
-                request.workspaceId()
+                memoryService.findAll(
+                        request.workspaceId()
+                );
+
+        String memoryContext =
+                memoryContextBuilder.build(memories);
+
+        if (memoryContext == null) {
+            memoryContext = "";
+        }
+
+        String augmentedSystemPrompt =
+                chatPromptBuilder.build(
+                        workspaceSystemPrompt,
+                        knowledgeContext,
+                        memoryContext
+                );
+
+        return aiStreamingClient.stream(
+                augmentedSystemPrompt,
+                preparedChat.history()
         );
-
-String memoryContext =
-        memoryContextBuilder.build(
-                memories
-        );
-
-        // Combine the workspace prompt and knowledge
-       String augmentedSystemPrompt =
-        chatPromptBuilder.build(
-                workspaceSystemPrompt,
-                knowledgeContext,
-                memoryContext
-        );
-
-        StringBuilder assistantResponse =
-                new StringBuilder();
-
-        return aiStreamingClient
-                .stream(
-                        augmentedSystemPrompt,
-                        preparedChat.history()
-                )
-                .doOnNext(assistantResponse::append)
-                .doOnComplete(() -> {
-
-                    String answer =
-                            assistantResponse.toString();
-
-                    if (answer.isBlank()) {
-                        return;
-                    }
-
-                    chatSessionService
-                            .saveAssistantMessage(
-                                    request,
-                                    answer
-                            );
-
-                    Conversation conversation =
-                            conversationService.findById(
-                                    request.workspaceId(),
-                                    request.conversationId()
-                            );
-
-                    if (conversation.hasDefaultTitle()) {
-
-                        String generatedTitle =
-                                aiTitleGenerator.generateTitle(
-                                        request.message()
-                                );
-
-                        conversationService.rename(
-                                request.workspaceId(),
-                                request.conversationId(),
-                                generatedTitle
-                        );
-                    }
-                });
     }
 
+    private void completeConversation(
+            ChatRequest request,
+            String answer
+    ) {
 
+        if (answer.isBlank()) {
+            return;
+        }
+
+        chatSessionService.saveAssistantMessage(
+                request,
+                answer
+        );
+
+        Conversation conversation =
+                conversationService.findById(
+                        request.workspaceId(),
+                        request.conversationId()
+                );
+
+        if (conversation.hasDefaultTitle()) {
+
+            String generatedTitle =
+                    aiTitleGenerator.generateTitle(
+                            request.message()
+                    );
+
+            conversationService.rename(
+                    request.workspaceId(),
+                    request.conversationId(),
+                    generatedTitle
+            );
+        }
+    }
 }

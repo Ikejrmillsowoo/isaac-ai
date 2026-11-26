@@ -15,6 +15,7 @@ import com.isaacai.server.workspace.model.Workspace;
 import com.isaacai.server.workspace.service.WorkspaceService;
 import com.isaacai.title.AiTitleGenerator;
 import com.isaacai.server.memory.model.MemoryCategory;
+import com.isaacai.ai.memory.MemoryCommandHandler;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -79,6 +80,11 @@ class ChatStreamingServiceTest {
 
     @BeforeEach
     void setUp() {
+        MemoryCommandHandler memoryCommandHandler =
+                new MemoryCommandHandler(
+                        memoryCommandDetector,
+                        memoryService
+                );
 
         chatStreamingService = new ChatStreamingService(
                 aiStreamingClient,
@@ -91,7 +97,7 @@ class ChatStreamingServiceTest {
                 chatPromptBuilder,
                 memoryService,
                 memoryContextBuilder,
-                memoryCommandDetector
+                memoryCommandHandler
         );
     }
 

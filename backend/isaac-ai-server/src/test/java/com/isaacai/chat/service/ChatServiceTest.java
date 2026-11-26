@@ -1,6 +1,7 @@
 package com.isaacai.chat.service;
 
 import com.isaacai.ai.client.AiChatClient;
+import com.isaacai.ai.memory.MemoryCommandHandler;
 import com.isaacai.ai.retrieval.KnowledgeContextBuilder;
 import com.isaacai.ai.retrieval.KnowledgeRetriever;
 import com.isaacai.ai.retrieval.RetrievedKnowledge;
@@ -22,6 +23,8 @@ import com.isaacai.server.memory.service.MemoryService;
 import com.isaacai.server.memory.model.Memory;
 import com.isaacai.ai.memory.MemoryCommandDetector;
 import com.isaacai.server.memory.model.MemoryCategory;
+import com.isaacai.ai.memory.UpdateMemoryCommand;
+import java.util.Optional;
 
 
 
@@ -30,9 +33,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ChatServiceTest {
@@ -94,6 +95,11 @@ private MemoryCategory memoryCategory;
 
     @BeforeEach
     void setUp() {
+        MemoryCommandHandler memoryCommandHandler =
+                new MemoryCommandHandler(
+                        memoryCommandDetector,
+                        memoryService
+                );
         chatService = new ChatService(
                 aiChatClient,
                 chatSessionService,
@@ -105,8 +111,10 @@ private MemoryCategory memoryCategory;
                 chatPromptBuilder,
                 memoryContextBuilder,
                 memoryService,
-                memoryCommandDetector
+                memoryCommandHandler
         );
+
+
     }
 
     @Test
@@ -594,220 +602,465 @@ void shouldIncludeWorkspaceMemoryInSystemPrompt() {
             );
 }
 
-@Test
-void shouldSaveExplicitRememberCommand() {
+    @Test
+    void shouldSaveExplicitRememberCommand() {
 
-    UUID workspaceId = UUID.randomUUID();
-    UUID conversationId = UUID.randomUUID();
+        UUID workspaceId = UUID.randomUUID();
+        UUID conversationId = UUID.randomUUID();
 
-    String systemPrompt =
-            "You are a helpful personal assistant.";
+        String memoryContent =
+                "my favorite programming language is Java.";
 
-    ChatRequest request = new ChatRequest(
-            workspaceId,
-            conversationId,
-            "Remember that my favorite programming language is Java."
-    );
+        String expectedAnswer =
+                "I'll remember that: " + memoryContent;
 
-    List<Message> history =
-            List.of(userMessage);
+        ChatRequest request = new ChatRequest(
+                workspaceId,
+                conversationId,
+                "Remember that " + memoryContent
+        );
 
-    PreparedChat preparedChat =
-            new PreparedChat(
-                    userMessage,
-                    history
-            );
+        PreparedChat preparedChat =
+                new PreparedChat(
+                        userMessage,
+                        List.of(userMessage)
+                );
 
-    when(userMessage.getId())
-            .thenReturn(UUID.randomUUID());
+        when(userMessage.getId())
+                .thenReturn(UUID.randomUUID());
 
-    when(assistantMessage.getId())
-            .thenReturn(UUID.randomUUID());
+        when(assistantMessage.getId())
+                .thenReturn(UUID.randomUUID());
 
-    when(memoryCommandDetector.isRememberCommand(
-            request.message()
-    )).thenReturn(true);
+        when(chatSessionService.prepareConversation(request))
+                .thenReturn(preparedChat);
 
-    when(memoryCommandDetector.extractRememberContent(
-            request.message()
-    )).thenReturn(
-            "my favorite programming language is Java."
-    );
+        when(memoryCommandDetector.isRememberCommand(
+                request.message()
+        )).thenReturn(true);
 
-    when(chatSessionService.prepareConversation(request))
-            .thenReturn(preparedChat);
+        when(memoryCommandDetector.extractRememberContent(
+                request.message()
+        )).thenReturn(memoryContent);
 
-    when(workspaceService.findById(workspaceId))
-            .thenReturn(workspace);
+        when(memory.getContent())
+                .thenReturn(memoryContent);
 
-    when(workspace.getSystemPrompt())
-            .thenReturn(systemPrompt);
+        when(memoryService.create(
+                workspaceId,
+                memoryContent,
+                MemoryCategory.CONTEXT,
+                conversationId
+        )).thenReturn(memory);
 
-    when(knowledgeRetriever.retrieve(
-            workspaceId,
-            request.message()
-    )).thenReturn(List.of());
+        when(chatSessionService.saveAssistantMessage(
+                request,
+                expectedAnswer
+        )).thenReturn(assistantMessage);
 
-    when(knowledgeContextBuilder.build(
-            List.of()
-    )).thenReturn("");
+        when(conversationService.findById(
+                workspaceId,
+                conversationId
+        )).thenReturn(conversation);
 
-    when(memoryService.findAll(workspaceId))
-            .thenReturn(List.of());
+        when(conversation.hasDefaultTitle())
+                .thenReturn(false);
 
-    when(memoryContextBuilder.build(
-            List.of()
-    )).thenReturn("");
+        ChatResponse response = chatService.chat(request);
 
-    when(chatPromptBuilder.build(
-            systemPrompt,
-            "",
-            ""
-    )).thenReturn(systemPrompt);
+        assertThat(response.answer())
+                .isEqualTo(expectedAnswer);
 
-    when(aiChatClient.chat(
-            systemPrompt,
-            history
-    )).thenReturn(
-            "Got it. I'll remember that."
-    );
+        verify(memoryService).create(
+                workspaceId,
+                memoryContent,
+                MemoryCategory.CONTEXT,
+                conversationId
+        );
 
-    when(chatSessionService.saveAssistantMessage(
-            request,
-            "Got it. I'll remember that."
-    )).thenReturn(assistantMessage);
+        verify(chatSessionService)
+                .saveAssistantMessage(request, expectedAnswer);
 
-    when(conversationService.findById(
-            workspaceId,
-            conversationId
-    )).thenReturn(conversation);
+        verifyNoInteractions(
+                aiChatClient,
+                knowledgeRetriever,
+                knowledgeContextBuilder,
+                memoryContextBuilder,
+                chatPromptBuilder,
+                workspaceService
+        );
 
-    when(conversation.hasDefaultTitle())
-            .thenReturn(false);
+        verifyNoMoreInteractions(memoryService);
+    }
 
-    ChatResponse response =
-            chatService.chat(request);
 
-    assertThat(response.answer())
-            .isEqualTo(
-                    "Got it. I'll remember that."
-            );
+    @Test
+    void shouldForgetExplicitMemoryCommand() {
 
-    verify(memoryService).create(
-            workspaceId,
-            "my favorite programming language is Java.",
-            MemoryCategory.CONTEXT,
-            conversationId
-    );
-}
+        UUID workspaceId = UUID.randomUUID();
+        UUID conversationId = UUID.randomUUID();
 
-@Test
-void shouldForgetExplicitMemoryCommand() {
+        String memoryContent = "I prefer Java.";
+        String expectedAnswer = "I've removed that memory.";
 
-    UUID workspaceId = UUID.randomUUID();
-    UUID conversationId = UUID.randomUUID();
+        ChatRequest request = new ChatRequest(
+                workspaceId,
+                conversationId,
+                "Forget that " + memoryContent
+        );
 
-    String systemPrompt =
-            "You are a helpful personal assistant.";
+        PreparedChat preparedChat =
+                new PreparedChat(
+                        userMessage,
+                        List.of(userMessage)
+                );
 
-    ChatRequest request = new ChatRequest(
-            workspaceId,
-            conversationId,
-            "Forget that I prefer Java."
-    );
+        when(userMessage.getId())
+                .thenReturn(UUID.randomUUID());
 
-    List<Message> history =
-            List.of(userMessage);
+        when(assistantMessage.getId())
+                .thenReturn(UUID.randomUUID());
 
-    PreparedChat preparedChat =
-            new PreparedChat(
-                    userMessage,
-                    history
-            );
+        when(chatSessionService.prepareConversation(request))
+                .thenReturn(preparedChat);
 
-    when(userMessage.getId())
-            .thenReturn(UUID.randomUUID());
+        when(memoryCommandDetector.isForgetCommand(
+                request.message()
+        )).thenReturn(true);
 
-    when(assistantMessage.getId())
-            .thenReturn(UUID.randomUUID());
+        when(memoryCommandDetector.extractForgetContent(
+                request.message()
+        )).thenReturn(memoryContent);
 
-    when(memoryCommandDetector.isRememberCommand(
-            request.message()
-    )).thenReturn(false);
+        when(memoryService.forget(
+                workspaceId,
+                memoryContent
+        )).thenReturn(true);
 
-    when(memoryCommandDetector.isForgetCommand(
-            request.message()
-    )).thenReturn(true);
+        when(chatSessionService.saveAssistantMessage(
+                request,
+                expectedAnswer
+        )).thenReturn(assistantMessage);
 
-    when(memoryCommandDetector.extractForgetContent(
-            request.message()
-    )).thenReturn("I prefer Java.");
+        when(conversationService.findById(
+                workspaceId,
+                conversationId
+        )).thenReturn(conversation);
 
-    when(memoryService.forget(
-            workspaceId,
-            "I prefer Java."
-    )).thenReturn(true);
+        when(conversation.hasDefaultTitle())
+                .thenReturn(false);
 
-    when(chatSessionService.prepareConversation(request))
-            .thenReturn(preparedChat);
+        ChatResponse response = chatService.chat(request);
 
-    when(workspaceService.findById(workspaceId))
-            .thenReturn(workspace);
+        assertThat(response.answer())
+                .isEqualTo(expectedAnswer);
 
-    when(workspace.getSystemPrompt())
-            .thenReturn(systemPrompt);
+        verify(memoryService).forget(
+                workspaceId,
+                memoryContent
+        );
 
-    when(knowledgeRetriever.retrieve(
-            workspaceId,
-            request.message()
-    )).thenReturn(List.of());
+        verify(chatSessionService)
+                .saveAssistantMessage(request, expectedAnswer);
 
-    when(knowledgeContextBuilder.build(
-            List.of()
-    )).thenReturn("");
+        verifyNoInteractions(
+                aiChatClient,
+                knowledgeRetriever,
+                knowledgeContextBuilder,
+                memoryContextBuilder,
+                chatPromptBuilder,
+                workspaceService
+        );
 
-    when(memoryService.findAll(workspaceId))
-            .thenReturn(List.of());
+        verifyNoMoreInteractions(memoryService);
+    }
 
-    when(memoryContextBuilder.build(
-            List.of()
-    )).thenReturn("");
 
-    when(chatPromptBuilder.build(
-            systemPrompt,
-            "",
-            ""
-    )).thenReturn(systemPrompt);
+    @Test
+    void shouldRejectUpdateWhenOriginalMemoryDoesNotExist() {
 
-    when(aiChatClient.chat(
-            systemPrompt,
-            history
-    )).thenReturn(
-            "Okay, I'll forget that."
-    );
+        UUID workspaceId = UUID.randomUUID();
+        UUID conversationId = UUID.randomUUID();
 
-    when(chatSessionService.saveAssistantMessage(
-            request,
-            "Okay, I'll forget that."
-    )).thenReturn(assistantMessage);
+        String originalContent = "I prefer Java.";
+        String newContent = "I prefer Python.";
 
-    when(conversationService.findById(
-            workspaceId,
-            conversationId
-    )).thenReturn(conversation);
+        String expectedAnswer =
+                "Unable to update your memory. Original memory not found.";
 
-    when(conversation.hasDefaultTitle())
-            .thenReturn(false);
+        ChatRequest request = new ChatRequest(
+                workspaceId,
+                conversationId,
+                "Update my memory from \"" + originalContent
+                        + "\" to \"" + newContent + "\"."
+        );
 
-    ChatResponse response =
-            chatService.chat(request);
+        UpdateMemoryCommand updateCommand =
+                new UpdateMemoryCommand(
+                        originalContent,
+                        newContent
+                );
 
-    assertThat(response.answer())
-            .isEqualTo("Okay, I'll forget that.");
+        PreparedChat preparedChat =
+                new PreparedChat(
+                        userMessage,
+                        List.of(userMessage)
+                );
 
-    verify(memoryService).forget(
-            workspaceId,
-            "I prefer Java."
-    );
-}
+        when(userMessage.getId())
+                .thenReturn(UUID.randomUUID());
+
+        when(assistantMessage.getId())
+                .thenReturn(UUID.randomUUID());
+
+        when(chatSessionService.prepareConversation(request))
+                .thenReturn(preparedChat);
+
+        when(memoryCommandDetector.extractUpdateCommand(
+                request.message()
+        )).thenReturn(Optional.of(updateCommand));
+
+        // Simulate a memory that does not exist
+        when(memoryService.update(
+                workspaceId,
+                originalContent,
+                newContent
+        )).thenThrow(
+                new IllegalArgumentException(
+                        "Original memory not found."
+                )
+        );
+
+        when(chatSessionService.saveAssistantMessage(
+                request,
+                expectedAnswer
+        )).thenReturn(assistantMessage);
+
+        when(conversationService.findById(
+                workspaceId,
+                conversationId
+        )).thenReturn(conversation);
+
+        when(conversation.hasDefaultTitle())
+                .thenReturn(false);
+
+        // Execute
+        ChatResponse response = chatService.chat(request);
+
+        // Verify the error response
+        assertThat(response.answer())
+                .isEqualTo(expectedAnswer);
+
+        verify(memoryService).update(
+                workspaceId,
+                originalContent,
+                newContent
+        );
+
+        verify(chatSessionService)
+                .saveAssistantMessage(request, expectedAnswer);
+
+        verifyNoInteractions(
+                aiChatClient,
+                knowledgeRetriever,
+                knowledgeContextBuilder,
+                memoryContextBuilder,
+                chatPromptBuilder,
+                workspaceService
+        );
+
+        verifyNoMoreInteractions(memoryService);
+    }
+
+
+
+    @Test
+    void shouldRejectUpdateWhenReplacementAlreadyExists() {
+
+        UUID workspaceId = UUID.randomUUID();
+        UUID conversationId = UUID.randomUUID();
+
+        String originalContent = "I prefer Java.";
+        String newContent = "I prefer Python.";
+
+        String expectedAnswer =
+                "Unable to update your memory. "
+                        + "Another memory already contains the new content.";
+
+        ChatRequest request = new ChatRequest(
+                workspaceId,
+                conversationId,
+                "Update my memory from \"" + originalContent
+                        + "\" to \"" + newContent + "\"."
+        );
+
+        UpdateMemoryCommand updateCommand =
+                new UpdateMemoryCommand(
+                        originalContent,
+                        newContent
+                );
+
+        PreparedChat preparedChat =
+                new PreparedChat(
+                        userMessage,
+                        List.of(userMessage)
+                );
+
+        when(userMessage.getId())
+                .thenReturn(UUID.randomUUID());
+
+        when(assistantMessage.getId())
+                .thenReturn(UUID.randomUUID());
+
+        when(chatSessionService.prepareConversation(request))
+                .thenReturn(preparedChat);
+
+        when(memoryCommandDetector.extractUpdateCommand(
+                request.message()
+        )).thenReturn(Optional.of(updateCommand));
+
+        when(memoryService.update(
+                workspaceId,
+                originalContent,
+                newContent
+        )).thenThrow(
+                new IllegalArgumentException(
+                        "Another memory already contains the new content."
+                )
+        );
+
+        when(chatSessionService.saveAssistantMessage(
+                request,
+                expectedAnswer
+        )).thenReturn(assistantMessage);
+
+        when(conversationService.findById(
+                workspaceId,
+                conversationId
+        )).thenReturn(conversation);
+
+        when(conversation.hasDefaultTitle())
+                .thenReturn(false);
+
+        ChatResponse response = chatService.chat(request);
+
+        assertThat(response.answer())
+                .isEqualTo(expectedAnswer);
+
+        verify(memoryService).update(
+                workspaceId,
+                originalContent,
+                newContent
+        );
+
+        verify(chatSessionService)
+                .saveAssistantMessage(request, expectedAnswer);
+
+        verifyNoInteractions(
+                aiChatClient,
+                knowledgeRetriever,
+                knowledgeContextBuilder,
+                memoryContextBuilder,
+                chatPromptBuilder,
+                workspaceService
+        );
+
+        verifyNoMoreInteractions(memoryService);
+    }
+
+
+    @Test
+    void shouldRejectUpdateWhenMultipleMemoriesMatch() {
+
+        UUID workspaceId = UUID.randomUUID();
+        UUID conversationId = UUID.randomUUID();
+
+        String originalContent = "I prefer Java.";
+        String newContent = "I prefer Python.";
+
+        String expectedAnswer =
+                "Unable to update your memory. "
+                        + "Multiple memories match the original content.";
+
+        ChatRequest request = new ChatRequest(
+                workspaceId,
+                conversationId,
+                "Update my memory from \"" + originalContent
+                        + "\" to \"" + newContent + "\"."
+        );
+
+        UpdateMemoryCommand updateCommand =
+                new UpdateMemoryCommand(
+                        originalContent,
+                        newContent
+                );
+
+        PreparedChat preparedChat =
+                new PreparedChat(
+                        userMessage,
+                        List.of(userMessage)
+                );
+
+        when(userMessage.getId())
+                .thenReturn(UUID.randomUUID());
+
+        when(assistantMessage.getId())
+                .thenReturn(UUID.randomUUID());
+
+        when(chatSessionService.prepareConversation(request))
+                .thenReturn(preparedChat);
+
+        when(memoryCommandDetector.extractUpdateCommand(
+                request.message()
+        )).thenReturn(Optional.of(updateCommand));
+
+        when(memoryService.update(
+                workspaceId,
+                originalContent,
+                newContent
+        )).thenThrow(
+                new IllegalStateException(
+                        "Multiple memories match the original content."
+                )
+        );
+
+        when(chatSessionService.saveAssistantMessage(
+                request,
+                expectedAnswer
+        )).thenReturn(assistantMessage);
+
+        when(conversationService.findById(
+                workspaceId,
+                conversationId
+        )).thenReturn(conversation);
+
+        when(conversation.hasDefaultTitle())
+                .thenReturn(false);
+
+        ChatResponse response = chatService.chat(request);
+
+        assertThat(response.answer())
+                .isEqualTo(expectedAnswer);
+
+        verify(memoryService).update(
+                workspaceId,
+                originalContent,
+                newContent
+        );
+
+        verify(chatSessionService)
+                .saveAssistantMessage(request, expectedAnswer);
+
+        verifyNoInteractions(
+                aiChatClient,
+                knowledgeRetriever,
+                knowledgeContextBuilder,
+                memoryContextBuilder,
+                chatPromptBuilder,
+                workspaceService
+        );
+
+        verifyNoMoreInteractions(memoryService);
+    }
+
 }
