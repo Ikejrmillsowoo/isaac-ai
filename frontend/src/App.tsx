@@ -1,6 +1,7 @@
 import { ChatHeader } from "./components/chat/ChatHeader";
 import { ChatInput } from "./components/chat/ChatInput";
 import { ChatWindow } from "./components/chat/ChatWindow";
+import KnowledgePanel from "./components/knowledge/KnowledgePanel";
 import { ConversationSidebar } from "./components/sidebar/ConversationSidebar";
 import { WorkspaceSelector } from "./components/sidebar/WorkspaceSelector";
 import {
@@ -18,15 +19,7 @@ function ConversationArea() {
   const { selectedWorkspace } = useWorkspaceContext();
 
   if (!selectedWorkspace) {
-    return (
-      <main className="application-shell">
-        <section className="app">
-          <div className="empty-state">
-            <h2>No workspace selected</h2>
-          </div>
-        </section>
-      </main>
-    );
+    return <div className="p-4">Select a workspace.</div>;
   }
 
   return (
@@ -56,7 +49,6 @@ function IsaacAiApp() {
   } = useConversationContext();
 
   const workspaceId = selectedWorkspace?.id ?? "";
-
   const conversationId = selectedConversation?.id ?? "";
 
   const { input, setInput, messages, isLoading, error, handleSubmit } = useChat(
@@ -86,6 +78,10 @@ function IsaacAiApp() {
           onSelect={selectConversation}
           onCreate={createNewConversation}
         />
+
+        {selectedWorkspace && (
+          <KnowledgePanel workspaceId={selectedWorkspace.id} />
+        )}
       </aside>
 
       <section className="app">

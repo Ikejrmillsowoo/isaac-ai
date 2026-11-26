@@ -73,4 +73,16 @@ public KnowledgeDocumentResponse upload(
 
     return KnowledgeDocumentResponse.from(document);
 }
+
+@DeleteMapping("/{documentId}")
+@ResponseStatus(HttpStatus.NO_CONTENT)
+public void delete(
+        @PathVariable UUID workspaceId,
+        @PathVariable UUID documentId
+) {
+    service.delete(
+            workspaceId,
+            documentId
+    );
+}
 }
