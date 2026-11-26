@@ -11,6 +11,8 @@ import java.util.UUID;
 public class KnowledgeRetriever {
 
     private static final int DEFAULT_LIMIT = 5;
+    @org.springframework.beans.factory.annotation.Value("${isaac.retrieval.max-distance:0.65}")
+    private double maxDistance = 0.65;
 
     private final EmbeddingClient embeddingClient;
     private final VectorFormatter vectorFormatter;
@@ -60,6 +62,6 @@ public class KnowledgeRetriever {
                 workspaceId,
                 formattedEmbedding,
                 DEFAULT_LIMIT
-        );
+        ).stream().filter(chunk -> Double.isFinite(chunk.distance()) && chunk.distance() <= maxDistance).toList();
     }
 }

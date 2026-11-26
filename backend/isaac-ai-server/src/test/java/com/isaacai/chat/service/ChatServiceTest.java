@@ -193,7 +193,7 @@ private MemoryCategory memoryCategory;
         .thenReturn(List.of());
 
 when(memoryContextBuilder.build(
-        List.of()
+        List.of(), request.message()
 )).thenReturn("");
 
         ChatResponse response =
@@ -541,7 +541,7 @@ void shouldIncludeWorkspaceMemoryInSystemPrompt() {
     // Pretend MemoryContextBuilder converts that memory
     // into the text that will be added to the prompt.
     when(memoryContextBuilder.build(
-            List.of(memory)
+            List.of(memory), request.message()
     )).thenReturn(memoryContext);
 
     // ChatPromptBuilder receives the memory context.
@@ -585,7 +585,7 @@ void shouldIncludeWorkspaceMemoryInSystemPrompt() {
 
     verify(memoryContextBuilder)
             .build(
-                    List.of(memory)
+                    List.of(memory), request.message()
             );
 
     verify(chatPromptBuilder)

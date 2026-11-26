@@ -23,10 +23,14 @@ public class KnowledgeContextBuilder {
 
                 """);
 
+        int index = 0;
         for (RetrievedKnowledge knowledge
                 : retrievedKnowledge) {
 
-            context.append("[Document: ")
+            if (knowledge.content() == null || knowledge.content().isBlank()) continue;
+            String heading = "[K" + (++index) + "] ";
+            if (context.length() + heading.length() + knowledge.documentName().length() + knowledge.content().length() + 64 > 4000) continue;
+            context.append(heading).append("[Document: ")
                     .append(knowledge.documentName())
                     .append(", Chunk: ")
                     .append(knowledge.chunkIndex())
