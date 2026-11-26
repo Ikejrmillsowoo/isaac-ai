@@ -127,6 +127,21 @@ if (memoryCommandDetector.isRememberCommand(
     );
 }
 
+if (memoryCommandDetector.isForgetCommand(
+        request.message()
+)) {
+
+    String memoryContent =
+            memoryCommandDetector.extractForgetContent(
+                    request.message()
+            );
+
+    memoryService.forget(
+            request.workspaceId(),
+            memoryContent
+    );
+}
+
         // Combine workspace prompt with retrieved knowledge
         String augmentedSystemPrompt =
         chatPromptBuilder.build(

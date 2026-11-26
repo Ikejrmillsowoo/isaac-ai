@@ -700,4 +700,114 @@ void shouldSaveExplicitRememberCommand() {
             conversationId
     );
 }
+
+@Test
+void shouldForgetExplicitMemoryCommand() {
+
+    UUID workspaceId = UUID.randomUUID();
+    UUID conversationId = UUID.randomUUID();
+
+    String systemPrompt =
+            "You are a helpful personal assistant.";
+
+    ChatRequest request = new ChatRequest(
+            workspaceId,
+            conversationId,
+            "Forget that I prefer Java."
+    );
+
+    List<Message> history =
+            List.of(userMessage);
+
+    PreparedChat preparedChat =
+            new PreparedChat(
+                    userMessage,
+                    history
+            );
+
+    when(userMessage.getId())
+            .thenReturn(UUID.randomUUID());
+
+    when(assistantMessage.getId())
+            .thenReturn(UUID.randomUUID());
+
+    when(memoryCommandDetector.isRememberCommand(
+            request.message()
+    )).thenReturn(false);
+
+    when(memoryCommandDetector.isForgetCommand(
+            request.message()
+    )).thenReturn(true);
+
+    when(memoryCommandDetector.extractForgetContent(
+            request.message()
+    )).thenReturn("I prefer Java.");
+
+    when(memoryService.forget(
+            workspaceId,
+            "I prefer Java."
+    )).thenReturn(true);
+
+    when(chatSessionService.prepareConversation(request))
+            .thenReturn(preparedChat);
+
+    when(workspaceService.findById(workspaceId))
+            .thenReturn(workspace);
+
+    when(workspace.getSystemPrompt())
+            .thenReturn(systemPrompt);
+
+    when(knowledgeRetriever.retrieve(
+            workspaceId,
+            request.message()
+    )).thenReturn(List.of());
+
+    when(knowledgeContextBuilder.build(
+            List.of()
+    )).thenReturn("");
+
+    when(memoryService.findAll(workspaceId))
+            .thenReturn(List.of());
+
+    when(memoryContextBuilder.build(
+            List.of()
+    )).thenReturn("");
+
+    when(chatPromptBuilder.build(
+            systemPrompt,
+            "",
+            ""
+    )).thenReturn(systemPrompt);
+
+    when(aiChatClient.chat(
+            systemPrompt,
+            history
+    )).thenReturn(
+            "Okay, I'll forget that."
+    );
+
+    when(chatSessionService.saveAssistantMessage(
+            request,
+            "Okay, I'll forget that."
+    )).thenReturn(assistantMessage);
+
+    when(conversationService.findById(
+            workspaceId,
+            conversationId
+    )).thenReturn(conversation);
+
+    when(conversation.hasDefaultTitle())
+            .thenReturn(false);
+
+    ChatResponse response =
+            chatService.chat(request);
+
+    assertThat(response.answer())
+            .isEqualTo("Okay, I'll forget that.");
+
+    verify(memoryService).forget(
+            workspaceId,
+            "I prefer Java."
+    );
+}
 }

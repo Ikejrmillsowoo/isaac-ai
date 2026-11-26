@@ -115,4 +115,14 @@ public class Memory {
     ) {
         this.category = category;
     }
+
+public void setContent(String content) {
+    this.content = content;
+}
+
+public void setCategory(MemoryCategory category) {
+    this.category = category;
+}
+
+
 }

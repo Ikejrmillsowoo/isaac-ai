@@ -11,21 +11,21 @@ import com.isaacai.server.workspace.service.WorkspaceService;
 import com.isaacai.title.AiTitleGenerator;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
+import com.isaacai.ai.memory.MemoryCommandDetector;
 
 import com.isaacai.ai.memory.MemoryContextBuilder;
 import com.isaacai.server.memory.model.Memory;
 import com.isaacai.server.memory.service.MemoryService;
+import com.isaacai.server.memory.model.MemoryCategory;
+
+
+
 
 import java.util.List;
 
 @Service
 public class ChatStreamingService {
 
-//     private static final String DEFAULT_SYSTEM_PROMPT = """
-//             You are Isaac AI, a private personal assistant.
-//             Be clear, practical, and accurate.
-//             Do not invent facts.
-//             """;
 
     private final AiStreamingClient aiStreamingClient;
     private final ChatSessionService chatSessionService;
@@ -35,8 +35,12 @@ public class ChatStreamingService {
     private final KnowledgeRetriever knowledgeRetriever;
     private final KnowledgeContextBuilder knowledgeContextBuilder;
     private final ChatPromptBuilder chatPromptBuilder;
-        private final MemoryService memoryService;
-        private final MemoryContextBuilder memoryContextBuilder;
+    private final MemoryService memoryService;
+    private final MemoryContextBuilder memoryContextBuilder;
+    private final MemoryCommandDetector memoryCommandDetector;
+  
+  
+
 
     public ChatStreamingService(
             AiStreamingClient aiStreamingClient,
@@ -48,7 +52,9 @@ public class ChatStreamingService {
             KnowledgeContextBuilder knowledgeContextBuilder,
             ChatPromptBuilder chatPromptBuilder,
             MemoryService memoryService,
-            MemoryContextBuilder memoryContextBuilder
+            MemoryContextBuilder memoryContextBuilder,
+            MemoryCommandDetector memoryCommandDetector
+            
     ) {
         this.aiStreamingClient = aiStreamingClient;
         this.chatSessionService = chatSessionService;
@@ -60,6 +66,8 @@ public class ChatStreamingService {
         this.chatPromptBuilder = chatPromptBuilder;
         this.memoryService = memoryService;
         this.memoryContextBuilder = memoryContextBuilder;
+        this.memoryCommandDetector = memoryCommandDetector;
+       
     }
 
     public Flux<String> stream(ChatRequest request) {
@@ -86,6 +94,37 @@ public class ChatStreamingService {
                 );
 
 
+        if (memoryCommandDetector.isRememberCommand(
+        request.message()
+)) {
+
+    String memoryContent =
+            memoryCommandDetector.extractRememberContent(
+                    request.message()
+            );
+
+    memoryService.create(
+            request.workspaceId(),
+            memoryContent,
+            MemoryCategory.CONTEXT,
+            request.conversationId()
+    );
+}
+
+if (memoryCommandDetector.isForgetCommand(
+        request.message()
+)) {
+
+    String memoryContent =
+            memoryCommandDetector.extractForgetContent(
+                    request.message()
+            );
+
+    memoryService.forget(
+            request.workspaceId(),
+            memoryContent
+    );
+}
         // Retrieve memory context
         List<Memory> memories =
         memoryService.findAll(
