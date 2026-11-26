@@ -150,7 +150,7 @@ public class ChatService {
                 );
 
         String memoryContext =
-                memoryContextBuilder.build(memories);
+                memoryContextBuilder.build(memories, request.message());
 
         if (memoryContext == null) {
             memoryContext = "";
