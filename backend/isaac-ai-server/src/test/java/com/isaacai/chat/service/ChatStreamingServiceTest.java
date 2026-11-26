@@ -26,6 +26,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
+import com.isaacai.ai.memory.UpdateMemoryCommand;
+import com.isaacai.server.memory.model.Memory;
+
+import java.util.Optional;
 import java.util.List;
 import java.util.UUID;
 
@@ -228,166 +232,106 @@ class ChatStreamingServiceTest {
                 .forget(any(), anyString());
     }
 
-    
-@Test
-void shouldRememberExplicitMemoryWhenStreaming() {
+    @Mock
+    private Memory memory;
 
-    UUID workspaceId = UUID.randomUUID();
-    UUID conversationId = UUID.randomUUID();
+    @Test
+    void shouldRememberExplicitMemoryWhenStreaming() {
+        ChatRequest request = prepareCommand("Remember that I prefer Java.");
+        when(memoryCommandDetector.isRememberCommand(request.message())).thenReturn(true);
+        when(memoryCommandDetector.extractRememberContent(request.message())).thenReturn("I prefer Java.");
+        when(memoryService.create(request.workspaceId(), "I prefer Java.",
+                MemoryCategory.CONTEXT, request.conversationId())).thenReturn(memory);
+        when(memory.getContent()).thenReturn("I prefer Java.");
 
-    String systemPrompt = "You are a helpful assistant.";
+        verifyCommandResponse(request, "I'll remember that: I prefer Java.");
+        verify(memoryService).create(request.workspaceId(), "I prefer Java.",
+                MemoryCategory.CONTEXT, request.conversationId());
+        verifyNoMoreInteractions(memoryService);
+    }
 
-    ChatRequest request = new ChatRequest(
-            workspaceId,
-            conversationId,
-            "Remember that I prefer Java."
-    );
+    @Test
+    void shouldForgetExplicitMemoryWhenStreaming() {
+        verifyForget(true, "I've removed that memory.");
+    }
 
-    List<Message> history = List.of(userMessage);
+    @Test
+    void shouldReportMissingMemoryWhenForgetting() {
+        verifyForget(false, "I couldn't find a matching memory to remove.");
+    }
 
-    PreparedChat preparedChat =
-            new PreparedChat(userMessage, history);
+    private void verifyForget(boolean forgotten, String expected) {
+        ChatRequest request = prepareCommand("Forget that I prefer Java.");
+        when(memoryCommandDetector.isForgetCommand(request.message())).thenReturn(true);
+        when(memoryCommandDetector.extractForgetContent(request.message())).thenReturn("I prefer Java.");
+        when(memoryService.forget(request.workspaceId(), "I prefer Java.")).thenReturn(forgotten);
 
-    when(memoryCommandDetector.isRememberCommand(request.message()))
-            .thenReturn(true);
+        verifyCommandResponse(request, expected);
+        verify(memoryService).forget(request.workspaceId(), "I prefer Java.");
+        verifyNoMoreInteractions(memoryService);
+    }
 
-    when(memoryCommandDetector.extractRememberContent(request.message()))
-            .thenReturn("I prefer Java.");
+    @Test
+    void shouldUpdateExplicitMemoryWhenStreaming() {
+        ChatRequest request = prepareUpdate();
+        when(memoryService.update(request.workspaceId(), "I prefer Java.", "I prefer Python."))
+                .thenReturn(memory);
+        when(memory.getContent()).thenReturn("I prefer Python.");
 
-    when(chatSessionService.prepareConversation(request))
-            .thenReturn(preparedChat);
+        verifyCommandResponse(request, "Your memory has been updated: I prefer Python.");
+        verify(memoryService).update(request.workspaceId(), "I prefer Java.", "I prefer Python.");
+        verifyNoMoreInteractions(memoryService);
+    }
 
-    when(workspaceService.findById(workspaceId))
-            .thenReturn(workspace);
+    @Test
+    void shouldRejectUpdateWhenOriginalMemoryDoesNotExist() {
+        verifyRejectedUpdate(new IllegalArgumentException("Original memory not found."));
+    }
 
-    when(workspace.getSystemPrompt())
-            .thenReturn(systemPrompt);
+    @Test
+    void shouldRejectUpdateWhenReplacementAlreadyExists() {
+        verifyRejectedUpdate(new IllegalArgumentException("Another memory already contains the new content."));
+    }
 
-    when(knowledgeRetriever.retrieve(
-            workspaceId, request.message()
-    )).thenReturn(List.of());
+    @Test
+    void shouldRejectUpdateWhenMultipleMemoriesMatch() {
+        verifyRejectedUpdate(new IllegalStateException("Multiple memories match the original content."));
+    }
 
-    when(knowledgeContextBuilder.build(List.of()))
-            .thenReturn("");
+    private void verifyRejectedUpdate(RuntimeException exception) {
+        ChatRequest request = prepareUpdate();
+        when(memoryService.update(request.workspaceId(), "I prefer Java.", "I prefer Python."))
+                .thenThrow(exception);
 
-    when(memoryService.findAll(workspaceId))
-            .thenReturn(List.of());
+        verifyCommandResponse(request, "Unable to update your memory. " + exception.getMessage());
+        verify(memoryService).update(request.workspaceId(), "I prefer Java.", "I prefer Python.");
+        verifyNoMoreInteractions(memoryService);
+    }
 
-    when(memoryContextBuilder.build(List.of()))
-            .thenReturn("");
+    private ChatRequest prepareUpdate() {
+        ChatRequest request = prepareCommand(
+                "Update my memory from \"I prefer Java.\" to \"I prefer Python.\".");
+        when(memoryCommandDetector.extractUpdateCommand(request.message()))
+                .thenReturn(Optional.of(new UpdateMemoryCommand("I prefer Java.", "I prefer Python.")));
+        return request;
+    }
 
-    when(chatPromptBuilder.build(systemPrompt, "", ""))
-            .thenReturn(systemPrompt);
+    private ChatRequest prepareCommand(String message) {
+        ChatRequest request = new ChatRequest(UUID.randomUUID(), UUID.randomUUID(), message);
+        when(chatSessionService.prepareConversation(request))
+                .thenReturn(new PreparedChat(userMessage, List.of(userMessage)));
+        when(conversationService.findById(request.workspaceId(), request.conversationId()))
+                .thenReturn(conversation);
+        when(conversation.hasDefaultTitle()).thenReturn(false);
+        return request;
+    }
 
-    when(aiStreamingClient.stream(systemPrompt, history))
-            .thenReturn(Flux.just("I'll remember that."));
-
-    when(conversationService.findById(workspaceId, conversationId))
-            .thenReturn(conversation);
-
-    when(conversation.hasDefaultTitle())
-            .thenReturn(false);
-
-    StepVerifier.create(chatStreamingService.stream(request))
-            .expectNext("I'll remember that.")
-            .verifyComplete();
-
-    verify(memoryService).create(
-            workspaceId,
-            "I prefer Java.",
-            MemoryCategory.CONTEXT,
-            conversationId
-    );
-}
-
-
-@Test
-void shouldForgetExplicitMemoryWhenStreaming() {
-
-    UUID workspaceId = UUID.randomUUID();
-    UUID conversationId = UUID.randomUUID();
-
-    String systemPrompt = "You are a helpful assistant.";
-
-    ChatRequest request = new ChatRequest(
-            workspaceId,
-            conversationId,
-            "Forget that I prefer Java."
-    );
-
-    List<Message> history = List.of(userMessage);
-
-    PreparedChat preparedChat =
-            new PreparedChat(userMessage, history);
-
-    when(memoryCommandDetector.isForgetCommand(request.message()))
-            .thenReturn(true);
-
-    when(memoryCommandDetector.extractForgetContent(request.message()))
-            .thenReturn("I prefer Java.");
-
-    when(memoryService.forget(
-            workspaceId,
-            "I prefer Java."
-    )).thenReturn(true);
-
-    when(chatSessionService.prepareConversation(request))
-            .thenReturn(preparedChat);
-
-    when(workspaceService.findById(workspaceId))
-            .thenReturn(workspace);
-
-    when(workspace.getSystemPrompt())
-            .thenReturn(systemPrompt);
-
-    when(knowledgeRetriever.retrieve(
-            workspaceId,
-            request.message()
-    )).thenReturn(List.of());
-
-    when(knowledgeContextBuilder.build(List.of()))
-            .thenReturn("");
-
-    when(memoryService.findAll(workspaceId))
-            .thenReturn(List.of());
-
-    when(memoryContextBuilder.build(List.of()))
-            .thenReturn("");
-
-    when(chatPromptBuilder.build(
-            systemPrompt,
-            "",
-            ""
-    )).thenReturn(systemPrompt);
-
-    when(aiStreamingClient.stream(
-            systemPrompt,
-            history
-    )).thenReturn(
-            Flux.just("Okay, I'll forget that.")
-    );
-
-    when(conversationService.findById(
-            workspaceId,
-            conversationId
-    )).thenReturn(conversation);
-
-    when(conversation.hasDefaultTitle())
-            .thenReturn(false);
-
-    StepVerifier.create(
-            chatStreamingService.stream(request)
-    )
-            .expectNext("Okay, I'll forget that.")
-            .verifyComplete();
-
-    verify(memoryService).forget(
-            workspaceId,
-            "I prefer Java."
-    );
-
-    verify(memoryService).findAll(workspaceId);
-}
-
-
+    private void verifyCommandResponse(ChatRequest request, String expected) {
+        StepVerifier.create(chatStreamingService.stream(request))
+                .expectNext(expected)
+                .verifyComplete();
+        verify(chatSessionService).saveAssistantMessage(request, expected);
+        verifyNoInteractions(aiStreamingClient, workspaceService, knowledgeRetriever,
+                knowledgeContextBuilder, memoryContextBuilder, chatPromptBuilder, aiTitleGenerator);
+    }
 }
