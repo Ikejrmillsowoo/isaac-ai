@@ -29,7 +29,7 @@ public class OllamaAiStreamingClient implements AiStreamingClient {
     public Flux<String> stream(String systemPrompt,List<Message> history) {
 
         List<org.springframework.ai.chat.messages.Message> aiMessages =
-                history.stream()
+                HistoryWindow.select(history, systemPrompt).stream()
                         .map(aiMessageMapper::map)
                         .toList();
 
