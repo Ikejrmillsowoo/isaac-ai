@@ -56,8 +56,17 @@ export function useConversations(workspaceId: string): UseConversationsResult {
   }, [workspaceId]);
 
   useEffect(() => {
-    void refreshConversations();
-  }, [refreshConversations]);
+    let active = true;
+    const request = workspaceId ? getActiveConversations(workspaceId) : Promise.resolve([]);
+    void request.then(items => {
+      if (!active) return;
+      setConversations(items);
+      setSelectedConversation(current => findSelectedConversation(items, current));
+    }).catch(error => {
+      if (active) setError(getErrorMessage(error, "Unable to load conversations."));
+    }).finally(() => { if (active) setIsLoading(false); });
+    return () => { active = false; };
+  }, [workspaceId]);
 
   async function createNewConversation(): Promise<void> {
     if (!workspaceId || isCreating) {
