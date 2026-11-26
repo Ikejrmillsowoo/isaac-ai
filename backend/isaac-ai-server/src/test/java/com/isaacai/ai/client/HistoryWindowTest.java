@@ -21,7 +21,7 @@ class HistoryWindowTest {
     private Message message(String text, MessageRole role) {
         Message m = mock(Message.class);
         when(m.getContent()).thenReturn(text);
-        when(m.getRole()).thenReturn(role);
+        lenient().when(m.getRole()).thenReturn(role);
         return m;
     }
 }
