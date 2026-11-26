@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { SyntheticEvent } from "react";
-import { useConversationContext } from "../context/ConversationContext";
+import { useConversationContext } from "../context/useConversationContext";
 
 import {
   streamChatMessage,
