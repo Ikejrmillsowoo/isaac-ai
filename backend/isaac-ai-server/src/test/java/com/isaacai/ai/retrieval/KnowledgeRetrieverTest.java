@@ -67,7 +67,8 @@ class KnowledgeRetrieverTest {
                         formattedEmbedding,
                         5
                 )
-        ).thenReturn(expected);
+        ).thenReturn(List.of(expected.getFirst(),
+                new RetrievedKnowledge(UUID.randomUUID(), UUID.randomUUID(), "irrelevant.pdf", 0, "Unrelated", 0.9)));
 
         List<RetrievedKnowledge> result =
                 retriever.retrieve(
