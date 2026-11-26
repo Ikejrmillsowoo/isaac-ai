@@ -148,4 +148,46 @@ void shouldUpdateExistingMemory() {
 }
 
 
+
+    @Test
+    void shouldEditMemoryByIdWithinWorkspace() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID memoryId = UUID.randomUUID();
+        Memory memory = mock(Memory.class);
+        when(memory.getId()).thenReturn(memoryId);
+        when(memoryRepository.findAllByWorkspaceIdOrderByCreatedAtDesc(workspaceId))
+                .thenReturn(List.of(memory));
+        when(memoryRepository.save(memory)).thenReturn(memory);
+        assertThat(memoryService.updateById(workspaceId, memoryId, "New content", MemoryCategory.GOAL))
+                .isSameAs(memory);
+        verify(memory).setContent("New content");
+        verify(memory).setCategory(MemoryCategory.GOAL);
+    }
+
+    @Test
+    void shouldRejectEditingMemoryOutsideWorkspace() {
+        UUID workspaceId = UUID.randomUUID();
+        when(memoryRepository.findAllByWorkspaceIdOrderByCreatedAtDesc(workspaceId)).thenReturn(List.of());
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                memoryService.updateById(workspaceId, UUID.randomUUID(), "New content", MemoryCategory.GOAL))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(memoryRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldRejectDuplicateContentWhenEditingById() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID memoryId = UUID.randomUUID();
+        Memory target = mock(Memory.class);
+        Memory other = mock(Memory.class);
+        when(target.getId()).thenReturn(memoryId);
+        when(other.getId()).thenReturn(UUID.randomUUID());
+        when(other.getContent()).thenReturn("I prefer Java examples.");
+        when(memoryRepository.findAllByWorkspaceIdOrderByCreatedAtDesc(workspaceId))
+                .thenReturn(List.of(target, other));
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                memoryService.updateById(workspaceId, memoryId, "I prefer Java examples", MemoryCategory.PREFERENCE))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(memoryRepository, never()).save(any());
+    }
 }
