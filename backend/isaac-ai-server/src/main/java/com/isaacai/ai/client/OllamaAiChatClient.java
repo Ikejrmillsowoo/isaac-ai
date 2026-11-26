@@ -26,7 +26,7 @@ public class OllamaAiChatClient implements AiChatClient {
     public String chat(String systemPrompt,List<Message> history) {
 
         List<org.springframework.ai.chat.messages.Message> aiMessages =
-                history.stream()
+                HistoryWindow.select(history, systemPrompt).stream()
                         .map(this::toAiMessage)
                         .toList();
 
