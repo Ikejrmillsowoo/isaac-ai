@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ChatHeader } from "./components/chat/ChatHeader";
 import { ChatInput } from "./components/chat/ChatInput";
 import { ChatWindow } from "./components/chat/ChatWindow";
@@ -17,17 +18,40 @@ import { useChat } from "./hooks/useChat";
 import "./App.css";
 
 function ConversationArea() {
-  const { selectedWorkspace } = useWorkspaceContext();
+  const { selectedWorkspace, isLoading, error, refreshWorkspaces } = useWorkspaceContext();
 
   if (!selectedWorkspace) {
-    return <div className="p-4">Select a workspace.</div>;
+    return <main className="application-shell"><aside className="conversation-sidebar">
+      <h2>Welcome to Isaac AI</h2>
+      {isLoading ? <p>Loading workspaces…</p> : <WorkspaceCreation />}
+      {error && <><p role="alert">{error}</p><button onClick={() => void refreshWorkspaces()}>Retry</button></>}
+    </aside></main>;
   }
 
   return (
-    <ConversationProvider workspaceId={selectedWorkspace.id}>
+    <ConversationProvider key={selectedWorkspace.id} workspaceId={selectedWorkspace.id}>
       <IsaacAiApp />
     </ConversationProvider>
   );
+}
+
+function WorkspaceCreation() {
+  const { createNewWorkspace, isCreating } = useWorkspaceContext();
+  const [name, setName] = useState("");
+  return <details open>
+    <summary>Create workspace</summary>
+    <form onSubmit={(event) => {
+      event.preventDefault();
+      if (!name.trim() || isCreating) return;
+      void createNewWorkspace({
+        name: name.trim(),
+        systemPrompt: "You are Isaac AI, a private personal assistant. Be clear, practical, and accurate. Do not invent facts.",
+      });
+    }}>
+      <label>Workspace name <input required maxLength={100} value={name} onChange={event => setName(event.target.value)} /></label>
+      <button disabled={isCreating || !name.trim()} type="submit">{isCreating ? "Creating…" : "Create workspace"}</button>
+    </form>
+  </details>;
 }
 
 function IsaacAiApp() {
@@ -69,6 +93,8 @@ function IsaacAiApp() {
           error={workspacesError}
           onSelect={selectWorkspace}
         />
+
+        <WorkspaceCreation />
 
         <ConversationSidebar
           conversations={conversations}
