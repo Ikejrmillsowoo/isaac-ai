@@ -50,6 +50,16 @@ public class MemoryController {
                 .toList();
     }
 
+    @PutMapping("/{memoryId}")
+    public MemoryResponse update(@PathVariable UUID workspaceId, @PathVariable UUID memoryId,
+                                 @RequestBody MemoryCreateRequest request) {
+        try {
+            return MemoryResponse.from(memoryService.updateById(workspaceId, memoryId, request.content(), request.category()));
+        } catch (IllegalArgumentException exception) {
+            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage(), exception);
+        }
+    }
+
     @DeleteMapping("/{memoryId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(
