@@ -2,6 +2,7 @@ import { ChatHeader } from "./components/chat/ChatHeader";
 import { ChatInput } from "./components/chat/ChatInput";
 import { ChatWindow } from "./components/chat/ChatWindow";
 import KnowledgePanel from "./components/knowledge/KnowledgePanel";
+import MemoryPanel from "./components/memory/MemoryPanel";
 import { ConversationSidebar } from "./components/sidebar/ConversationSidebar";
 import { WorkspaceSelector } from "./components/sidebar/WorkspaceSelector";
 import {
@@ -80,7 +81,10 @@ function IsaacAiApp() {
         />
 
         {selectedWorkspace && (
-          <KnowledgePanel workspaceId={selectedWorkspace.id} />
+          <>
+            <KnowledgePanel workspaceId={selectedWorkspace.id} />
+            <MemoryPanel key={selectedWorkspace.id} workspaceId={selectedWorkspace.id} chatBusy={isLoading} />
+          </>
         )}
       </aside>
 

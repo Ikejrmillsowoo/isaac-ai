@@ -1,0 +1,35 @@
+.memory-panel {
+  margin-top: 20px;
+  padding: 12px 8px;
+  border-top: 1px solid rgba(255,255,255,.12);
+  font-size: .85rem;
+}
+.memory-panel summary { cursor: pointer; font-weight: 700; }
+.memory-panel form, .memory-panel label { display: grid; gap: 6px; }
+.memory-panel label { margin: 10px 0; }
+.memory-panel input, .memory-panel textarea, .memory-panel select {
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid #414858;
+  border-radius: 6px;
+  background: #17191f;
+  color: #f9fafb;
+  font: inherit;
+}
+.memory-panel textarea { resize: vertical; }
+.memory-panel button {
+  padding: 6px 10px;
+  border: 1px solid #414858;
+  border-radius: 6px;
+  background: #262a32;
+  color: inherit;
+  cursor: pointer;
+}
+.memory-panel button:disabled { opacity: .5; cursor: not-allowed; }
+.memory-hint { color: #9ca3af; }
+.memory-error { color: #fca5a5; }
+.memory-list { list-style: none; padding: 0; max-height: 320px; overflow-y: auto; }
+.memory-list li { padding: 10px; margin: 8px 0; border: 1px solid #414858; border-radius: 8px; }
+.memory-list small { color: #93c5fd; }
+.memory-list p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0; }

@@ -12,6 +12,22 @@ import java.util.Optional;
 @Component
 public class MemoryCommandHandler {
 
+    @org.springframework.beans.factory.annotation.Value("${isaac.memory.automatic.enabled:false}")
+    private boolean automaticMemoryEnabled;
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(MemoryCommandHandler.class);
+
+    public void captureAutomaticMemory(ChatRequest request) {
+        if (!automaticMemoryEnabled) return;
+        AutomaticMemoryExtractor.extract(request.message()).ifPresent(content -> {
+            try {
+                memoryService.create(request.workspaceId(), content, MemoryCategory.PREFERENCE, request.conversationId());
+            } catch (RuntimeException exception) {
+                log.warn("Automatic memory persistence failed: {}", exception.getClass().getSimpleName());
+            }
+        });
+    }
+
     private final MemoryCommandDetector memoryCommandDetector;
     private final MemoryService memoryService;
 

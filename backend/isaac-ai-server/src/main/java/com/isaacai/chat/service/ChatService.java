@@ -91,6 +91,10 @@ public class ChatService {
                         answer
                 );
 
+        if (memoryResponse.isEmpty() && !answer.isBlank()) {
+            memoryCommandHandler.captureAutomaticMemory(request);
+        }
+
         Conversation conversation =
                 conversationService.findById(
                         request.workspaceId(),

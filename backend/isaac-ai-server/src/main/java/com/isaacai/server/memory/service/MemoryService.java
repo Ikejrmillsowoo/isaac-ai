@@ -167,6 +167,22 @@ public class MemoryService {
         return memoryRepository.save(existingMemory);
     }
 
+    public Memory updateById(UUID workspaceId, UUID memoryId, String content, MemoryCategory category) {
+        if (content == null || content.isBlank() || category == null) {
+            throw new IllegalArgumentException("Memory content and category are required.");
+        }
+        List<Memory> memories = findAll(workspaceId);
+        Memory target = memories.stream().filter(m -> memoryId.equals(m.getId()))
+                .findFirst().orElseThrow(() -> new IllegalArgumentException("Memory not found in this workspace."));
+        if (memories.stream().filter(m -> !memoryId.equals(m.getId()))
+                .anyMatch(m -> normalize(m.getContent()).equals(normalize(content)))) {
+            throw new IllegalArgumentException("Another memory already contains the new content.");
+        }
+        target.setContent(content.trim());
+        target.setCategory(category);
+        return memoryRepository.save(target);
+    }
+
     // =====================================================
     // GET ALL MEMORIES FOR A WORKSPACE
     // =====================================================

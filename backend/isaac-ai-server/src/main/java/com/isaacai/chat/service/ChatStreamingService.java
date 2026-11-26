@@ -92,7 +92,8 @@ public class ChatStreamingService {
                 .doOnComplete(() ->
                         completeConversation(
                                 request,
-                                assistantResponse.toString()
+                                assistantResponse.toString(),
+                                memoryResponse.isEmpty()
                         )
                 );
     }
@@ -145,7 +146,8 @@ public class ChatStreamingService {
 
     private void completeConversation(
             ChatRequest request,
-            String answer
+            String answer,
+            boolean ordinaryChat
     ) {
 
         if (answer.isBlank()) {
@@ -156,6 +158,10 @@ public class ChatStreamingService {
                 request,
                 answer
         );
+
+        if (ordinaryChat) {
+            memoryCommandHandler.captureAutomaticMemory(request);
+        }
 
         Conversation conversation =
                 conversationService.findById(
