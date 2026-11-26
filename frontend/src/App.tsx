@@ -6,14 +6,10 @@ import KnowledgePanel from "./components/knowledge/KnowledgePanel";
 import MemoryPanel from "./components/memory/MemoryPanel";
 import { ConversationSidebar } from "./components/sidebar/ConversationSidebar";
 import { WorkspaceSelector } from "./components/sidebar/WorkspaceSelector";
-import {
-  ConversationProvider,
-  useConversationContext,
-} from "./context/ConversationContext";
-import {
-  WorkspaceProvider,
-  useWorkspaceContext,
-} from "./context/WorkspaceContext";
+import { ConversationProvider } from "./context/ConversationContext";
+import { useConversationContext } from "./context/useConversationContext";
+import { WorkspaceProvider } from "./context/WorkspaceContext";
+import { useWorkspaceContext } from "./context/useWorkspaceContext";
 import { useChat } from "./hooks/useChat";
 import "./App.css";
 
@@ -45,6 +41,8 @@ function WorkspaceCreation() {
       if (!name.trim() || isCreating) return;
       void createNewWorkspace({
         name: name.trim(),
+        description: "",
+        color: "",
         systemPrompt: "You are Isaac AI, a private personal assistant. Be clear, practical, and accurate. Do not invent facts.",
       });
     }}>
