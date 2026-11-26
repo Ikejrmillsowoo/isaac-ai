@@ -44,7 +44,13 @@ export default function KnowledgePanel({ workspaceId }: KnowledgePanelProps) {
   }
 
   useEffect(() => {
-    loadDocuments();
+    let active = true;
+    void fetchKnowledgeDocuments(workspaceId).then(items => {
+      if (active) setDocuments(items);
+    }).catch(error => {
+      if (active) setError(error instanceof Error ? error.message : "Failed to load knowledge documents.");
+    }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
   }, [workspaceId]);
 
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -108,7 +114,7 @@ export default function KnowledgePanel({ workspaceId }: KnowledgePanelProps) {
 
         <button
           type="button"
-          disabled={uploading}
+          disabled={uploading || loading}
           onClick={() => fileInputRef.current?.click()}
           className="rounded border px-2 py-1 text-sm"
         >
