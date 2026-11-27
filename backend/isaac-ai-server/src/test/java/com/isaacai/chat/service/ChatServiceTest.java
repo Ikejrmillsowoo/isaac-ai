@@ -430,7 +430,7 @@ when(memoryContextBuilder.build(
                 request,
                 "The researchers measured social media use "
                         + "with 31 activities rated on a "
-                        + "nine-point Likert scale."
+                        + "nine-point Likert scale." + com.isaacai.ai.retrieval.KnowledgeSources.footer(List.of(retrievedKnowledge))
         )).thenReturn(assistantMessage);
 
         when(conversationService.findById(
@@ -446,7 +446,7 @@ when(memoryContextBuilder.build(
 
         assertThat(response.answer())
                 .contains("31 activities")
-                .contains("nine-point Likert scale");
+                .contains("nine-point Likert scale", "[K1] SMUS Manuscript.pdf");
 
         verify(knowledgeRetriever)
                 .retrieve(

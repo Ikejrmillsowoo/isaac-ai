@@ -7,6 +7,7 @@ import com.isaacai.ai.memory.MemoryContextBuilder;
 import com.isaacai.ai.retrieval.KnowledgeContextBuilder;
 import com.isaacai.ai.retrieval.KnowledgeRetriever;
 import com.isaacai.ai.retrieval.RetrievedKnowledge;
+import com.isaacai.ai.retrieval.KnowledgeSources;
 import com.isaacai.chat.dto.ChatRequest;
 import com.isaacai.server.conversation.model.Conversation;
 import com.isaacai.server.conversation.service.ConversationService;
@@ -138,10 +139,17 @@ public class ChatStreamingService {
                         memoryContext
                 );
 
-        return aiStreamingClient.stream(
+        String footer = KnowledgeSources.footer(retrievedKnowledge);
+        Flux<String> stream = aiStreamingClient.stream(
                 augmentedSystemPrompt,
                 preparedChat.history()
         );
+        if (footer.isEmpty()) return stream;
+        return Flux.defer(() -> {
+            java.util.concurrent.atomic.AtomicBoolean hasAnswer = new java.util.concurrent.atomic.AtomicBoolean();
+            return stream.doOnNext(chunk -> { if (!chunk.isBlank()) hasAnswer.set(true); })
+                    .concatWith(Flux.defer(() -> hasAnswer.get() ? Flux.just(footer) : Flux.empty()));
+        });
     }
 
     private void completeConversation(

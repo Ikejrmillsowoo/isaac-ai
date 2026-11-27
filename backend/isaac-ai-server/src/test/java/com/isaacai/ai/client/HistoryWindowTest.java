@@ -18,6 +18,12 @@ class HistoryWindowTest {
         Message latest = message("latest", MessageRole.USER);
         assertThat(HistoryWindow.select(List.of(first, second, latest), "")).containsExactly(first, second, latest);
     }
+    @Test void limitsLongConversationToRecentTurns() {
+        var history = new java.util.ArrayList<Message>();
+        for (int i = 0; i < 31; i++) history.add(message("message " + i, i % 2 == 0 ? MessageRole.USER : MessageRole.ASSISTANT));
+        var selected = HistoryWindow.select(history, "");
+        assertThat(selected).hasSize(19).containsExactlyElementsOf(history.subList(12, 31));
+    }
     private Message message(String text, MessageRole role) {
         Message m = mock(Message.class);
         when(m.getContent()).thenReturn(text);

@@ -7,6 +7,7 @@ import com.isaacai.ai.memory.MemoryContextBuilder;
 import com.isaacai.ai.retrieval.KnowledgeContextBuilder;
 import com.isaacai.ai.retrieval.KnowledgeRetriever;
 import com.isaacai.ai.retrieval.RetrievedKnowledge;
+import com.isaacai.ai.retrieval.KnowledgeSources;
 import com.isaacai.chat.dto.ChatRequest;
 import com.isaacai.chat.dto.ChatResponse;
 import com.isaacai.server.conversation.model.Conversation;
@@ -163,9 +164,10 @@ public class ChatService {
                         memoryContext
                 );
 
-        return aiChatClient.chat(
+        String answer = aiChatClient.chat(
                 augmentedSystemPrompt,
                 preparedChat.history()
         );
+        return answer == null || answer.isBlank() ? answer : answer + KnowledgeSources.footer(retrievedKnowledge);
     }
 }

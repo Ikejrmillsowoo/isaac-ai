@@ -61,8 +61,16 @@ export function useWorkspaces(): UseWorkspacesResult {
   }, []);
 
   useEffect(() => {
-    void refreshWorkspaces();
-  }, [refreshWorkspaces]);
+    let active = true;
+    void getWorkspaces().then(items => {
+      if (!active) return;
+      setWorkspaces(items);
+      setSelectedWorkspace(current => items.find(item => item.id === current?.id) ?? items[0] ?? null);
+    }).catch(error => {
+      if (active) setError(error instanceof Error ? error.message : "Unable to load workspaces.");
+    }).finally(() => { if (active) setIsLoading(false); });
+    return () => { active = false; };
+  }, []);
 
   async function createNewWorkspace(
     request: CreateWorkspaceRequest,
