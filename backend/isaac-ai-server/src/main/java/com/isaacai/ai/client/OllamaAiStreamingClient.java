@@ -14,15 +14,26 @@ import java.util.List;
 public class OllamaAiStreamingClient implements AiStreamingClient {
 
     private final ChatClient chatClient;
+    private final OllamaAiChatClient toolClient;
+    private final com.isaacai.tools.TaskActions actions;
     private final AiMessageMapper aiMessageMapper;
 
     public OllamaAiStreamingClient(
             ChatClient.Builder builder,
-            AiMessageMapper aiMessageMapper
+            AiMessageMapper aiMessageMapper, OllamaAiChatClient toolClient, com.isaacai.tools.TaskActions actions
     ) {
         this.chatClient = builder.build();
+        this.toolClient=toolClient;
+        this.actions=actions;
 
         this.aiMessageMapper = aiMessageMapper;
+    }
+
+    @Override
+    public Flux<String> streamWithTools(String systemPrompt,List<Message> history,java.util.UUID workspace) {
+        if (!actions.enabled(workspace)) return stream(systemPrompt,history);
+        return Flux.defer(() -> reactor.core.publisher.Mono.justOrEmpty(toolClient.chatWithTools(systemPrompt,history,workspace)).flux())
+            .subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic());
     }
 
     @Override
