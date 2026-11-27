@@ -14,11 +14,12 @@ public class WorkspaceTools {
     }
     @Tool(description="Calculate two decimal numbers with +, -, * or /.")
     public String calculate(String left,String operator,String right) {
+        actions.requireEnabled(workspace);
         try { return ToolCalculator.calculate(left,operator,right); }
         catch (IllegalArgumentException | ArithmeticException e) { return "Invalid calculation"; }
     }
     @Tool(description="List tasks in the current workspace, including their IDs.")
-    public List<Map<String,Object>> listTasks() { return actions.tasks(workspace); }
+    public List<Map<String,Object>> listTasks() { actions.requireEnabled(workspace); return actions.tasks(workspace); }
     @Tool(description="Propose creating a task. Does not create it until the user approves in the Actions panel.")
     public String createTask(@ToolParam(description="Task title, maximum 300 characters") String title) {
         return "Pending user approval: " + actions.propose(workspace,"create_task",title);
