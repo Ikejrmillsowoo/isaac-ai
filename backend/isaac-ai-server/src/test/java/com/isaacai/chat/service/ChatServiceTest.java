@@ -171,9 +171,9 @@ private MemoryCategory memoryCategory;
                 ""
         )).thenReturn(systemPrompt);
 
-        when(aiChatClient.chat(
+        when(aiChatClient.chatWithTools(
                 systemPrompt,
-                history
+                history, workspaceId
         )).thenReturn("Hello Isaac!");
 
         when(chatSessionService.saveAssistantMessage(
@@ -228,9 +228,9 @@ when(memoryContextBuilder.build(
                 );
 
         verify(aiChatClient)
-                .chat(
+                .chatWithTools(
                         systemPrompt,
-                        history
+                        history, workspaceId
                 );
 
         verify(chatSessionService)
@@ -296,9 +296,9 @@ when(memoryContextBuilder.build(
                 ""
         )).thenReturn(systemPrompt);
 
-        when(aiChatClient.chat(
+        when(aiChatClient.chatWithTools(
                 systemPrompt,
-                history
+                history, workspaceId
         )).thenReturn("Here is a study plan...");
 
         when(chatSessionService.saveAssistantMessage(
@@ -417,9 +417,9 @@ when(memoryContextBuilder.build(
                 ""
         )).thenReturn(augmentedPrompt);
 
-        when(aiChatClient.chat(
+        when(aiChatClient.chatWithTools(
                 augmentedPrompt,
-                history
+                history, workspaceId
         )).thenReturn(
                 "The researchers measured social media use "
                         + "with 31 activities rated on a "
@@ -467,9 +467,9 @@ when(memoryContextBuilder.build(
                 );
 
         verify(aiChatClient)
-                .chat(
+                .chatWithTools(
                         augmentedPrompt,
-                        history
+                        history, workspaceId
                 );
     }
 
@@ -552,9 +552,9 @@ void shouldIncludeWorkspaceMemoryInSystemPrompt() {
     )).thenReturn(augmentedPrompt);
 
     // We are mocking the AI here.
-    when(aiChatClient.chat(
+    when(aiChatClient.chatWithTools(
             augmentedPrompt,
-            history
+            history, workspaceId
     )).thenReturn(
             "Here is a Java example for checking "
                     + "whether a number is even."
@@ -596,9 +596,9 @@ void shouldIncludeWorkspaceMemoryInSystemPrompt() {
             );
 
     verify(aiChatClient)
-            .chat(
+            .chatWithTools(
                     augmentedPrompt,
-                    history
+                    history, workspaceId
             );
 }
 
