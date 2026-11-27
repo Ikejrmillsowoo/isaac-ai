@@ -30,6 +30,11 @@ public class TaskActions {
         return jdbc.queryForList("SELECT id,tool,argument,status,result,created_at FROM tool_actions WHERE workspace_id=? ORDER BY created_at DESC LIMIT 100", workspace);
     }
 
+    public void auditRead(UUID workspace,String tool,String argument,String result) {
+        requireEnabled(workspace);
+        jdbc.update("INSERT INTO tool_actions(id,workspace_id,tool,argument,status,result) VALUES (?,?,?,?,'EXECUTED',?)",UUID.randomUUID(),workspace,tool,argument,result);
+    }
+
     public UUID propose(UUID workspace, String tool, String argument) {
         requireEnabled(workspace);
         if (argument == null || argument.isBlank() || argument.length() > 300)
