@@ -12,6 +12,16 @@ public class TaskActions {
     private final JdbcTemplate jdbc;
     public TaskActions(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
+    public boolean enabled(UUID workspace) {
+        return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM tool_permissions WHERE workspace_id=? AND enabled=true)",Boolean.class,workspace));
+    }
+    public void setEnabled(UUID workspace, boolean enabled) {
+        jdbc.update("INSERT INTO tool_permissions(workspace_id,enabled) VALUES (?,?) ON CONFLICT(workspace_id) DO UPDATE SET enabled=EXCLUDED.enabled",workspace,enabled);
+    }
+    public void requireEnabled(UUID workspace) {
+        if (!enabled(workspace)) throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Tools disabled");
+    }
+
     public List<Map<String,Object>> tasks(UUID workspace) {
         return jdbc.queryForList("SELECT id,title,completed,created_at FROM assistant_tasks WHERE workspace_id=? ORDER BY created_at DESC", workspace);
     }
@@ -21,6 +31,7 @@ public class TaskActions {
     }
 
     public UUID propose(UUID workspace, String tool, String argument) {
+        requireEnabled(workspace);
         if (argument == null || argument.isBlank() || argument.length() > 300)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid argument");
         if (!Set.of("create_task","complete_task").contains(tool))
@@ -37,6 +48,7 @@ public class TaskActions {
 
     @Transactional
     public String decide(UUID workspace, UUID id, boolean approve) {
+        if (approve) requireEnabled(workspace);
         var rows = jdbc.queryForList("SELECT tool,argument,status FROM tool_actions WHERE workspace_id=? AND id=? FOR UPDATE", workspace,id);
         if (rows.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Action not found");
         var row = rows.getFirst();
