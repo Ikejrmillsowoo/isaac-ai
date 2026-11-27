@@ -1,0 +1,4 @@
+CREATE TABLE tool_permissions (
+ workspace_id UUID PRIMARY KEY REFERENCES workspaces(id) ON DELETE CASCADE,
+ enabled BOOLEAN NOT NULL DEFAULT FALSE
+);
