@@ -164,9 +164,9 @@ public class ChatService {
                         memoryContext
                 );
 
-        String answer = aiChatClient.chat(
+        String answer = aiChatClient.chatWithTools(
                 augmentedSystemPrompt,
-                preparedChat.history()
+                preparedChat.history(), request.workspaceId()
         );
         return answer == null || answer.isBlank() ? answer : answer + KnowledgeSources.footer(retrievedKnowledge);
     }
