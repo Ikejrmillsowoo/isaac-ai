@@ -8,6 +8,10 @@ import java.util.List;
 
 public interface AiChatClient {
 
+    default String chatWithTools(String systemPrompt,List<Message> history,java.util.UUID workspace) {
+        return chat(systemPrompt,history);
+    }
+
     String chat(
         String systemPrompt,
         List<Message> history
