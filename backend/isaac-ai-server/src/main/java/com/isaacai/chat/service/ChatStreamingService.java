@@ -140,9 +140,9 @@ public class ChatStreamingService {
                 );
 
         String footer = KnowledgeSources.footer(retrievedKnowledge);
-        Flux<String> stream = aiStreamingClient.stream(
+        Flux<String> stream = aiStreamingClient.streamWithTools(
                 augmentedSystemPrompt,
-                preparedChat.history()
+                preparedChat.history(), request.workspaceId()
         );
         if (footer.isEmpty()) return stream;
         return Flux.defer(() -> {
