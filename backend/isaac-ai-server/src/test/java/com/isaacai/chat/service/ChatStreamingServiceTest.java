@@ -157,9 +157,9 @@ class ChatStreamingServiceTest {
                 ""
         )).thenReturn(systemPrompt);
 
-        when(aiStreamingClient.stream(
+        when(aiStreamingClient.streamWithTools(
                 systemPrompt,
-                history
+                history, workspaceId
         )).thenReturn(
                 Flux.just("Hello", " Isaac")
         );
@@ -211,9 +211,9 @@ class ChatStreamingServiceTest {
                 );
 
         verify(aiStreamingClient)
-                .stream(
+                .streamWithTools(
                         systemPrompt,
-                        history
+                        history, workspaceId
                 );
 
         verify(conversationService)

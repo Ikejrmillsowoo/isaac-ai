@@ -15,9 +15,11 @@ import java.util.List;
 public class OllamaAiChatClient implements AiChatClient {
 
     private final ChatClient chatClient;
+    private final com.isaacai.tools.TaskActions actions;
     private final AiMessageMapper aiMessageMapper;
 
-    public OllamaAiChatClient(ChatClient.Builder builder, AiMessageMapper aiMessageMapper) {
+    public OllamaAiChatClient(ChatClient.Builder builder, AiMessageMapper aiMessageMapper, com.isaacai.tools.TaskActions actions) {
+        this.actions=actions;
         this.chatClient = builder.build();
         this.aiMessageMapper = aiMessageMapper;
     }
@@ -36,6 +38,15 @@ public class OllamaAiChatClient implements AiChatClient {
                 .messages(aiMessages)
                 .call()
                 .content();
+    }
+
+    @Override
+    public String chatWithTools(String systemPrompt,List<Message> history,java.util.UUID workspace) {
+        if (!actions.enabled(workspace)) return chat(systemPrompt,history);
+        String prompt=systemPrompt+"\nTools are available. Task changes are only proposals until approved in the Actions panel. Never claim a pending action was executed.";
+        return chatClient.prompt().system(prompt)
+            .messages(HistoryWindow.select(history,prompt).stream().map(this::toAiMessage).toList())
+            .tools(new com.isaacai.tools.WorkspaceTools(workspace,actions)).call().content();
     }
 
     private org.springframework.ai.chat.messages.Message toAiMessage(

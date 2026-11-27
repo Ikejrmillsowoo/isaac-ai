@@ -11,6 +11,7 @@ import { useConversationContext } from "./context/useConversationContext";
 import { WorkspaceProvider } from "./context/WorkspaceContext";
 import { useWorkspaceContext } from "./context/useWorkspaceContext";
 import { useChat } from "./hooks/useChat";
+import ToolsPanel from "./components/tools/ToolsPanel";
 import "./App.css";
 
 function ConversationArea() {
@@ -107,6 +108,7 @@ function IsaacAiApp() {
         {selectedWorkspace && (
           <>
             <KnowledgePanel workspaceId={selectedWorkspace.id} />
+            <ToolsPanel key={selectedWorkspace.id} workspaceId={selectedWorkspace.id} chatBusy={isLoading} />
             <MemoryPanel key={selectedWorkspace.id} workspaceId={selectedWorkspace.id} chatBusy={isLoading} />
           </>
         )}
