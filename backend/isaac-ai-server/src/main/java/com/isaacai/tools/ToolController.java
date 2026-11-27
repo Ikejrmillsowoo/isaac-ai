@@ -12,6 +12,19 @@ public class ToolController {
     public ToolController(TaskActions actions, WorkspaceService workspaces) {
         this.actions=actions; this.workspaces=workspaces;
     }
+    @GetMapping("/permission")
+    public Map<String,Boolean> permission(@PathVariable UUID workspaceId) {
+        workspaces.findById(workspaceId);
+        return Map.of("enabled",actions.enabled(workspaceId));
+    }
+    @PutMapping("/permission")
+    public Map<String,Boolean> permission(@PathVariable UUID workspaceId,@RequestBody Permission permission) {
+        workspaces.findById(workspaceId);
+        if(permission.enabled()==null) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST,"Permission required");
+        actions.setEnabled(workspaceId,permission.enabled());
+        return Map.of("enabled",permission.enabled());
+    }
+    public record Permission(Boolean enabled) {}
     @GetMapping("/tasks")
     public List<Map<String,Object>> tasks(@PathVariable UUID workspaceId) {
         workspaces.findById(workspaceId);
